@@ -61,6 +61,7 @@ The `grimoire@grimoire` form in the main install command is `plugin-name@marketp
 | `/grimoire-know <question>` | Answer questions about the repository or its application — read-only, with web research and source citations when needed. | [↓](#grimoire-know) |
 | `/grimoire-update` | Check installed vs. latest version, show changelog, guide you through the official update commands. | [↓](#grimoire-update) |
 | `/grimoire-note <note>` | Surgically refine `.grimoire/PROJECT.md`'s Key Conventions and Notes from a free-text input — semantic dedup, retroactive consolidation, IDE-aware diff review. | [↓](#grimoire-note) |
+| `/grimoire-deps [pkg/ecosystem]` | Audit dependencies (security/semver/maturity/reputation), apply the safe updates you pick with per-dependency atomic commits gated by the build/test, and route breaking upgrades to `/grimoire-spec`. | [↓](#grimoire-deps) |
 
 ## Skills in detail
 
@@ -124,6 +125,14 @@ Surgical, incremental writer for `.grimoire/PROJECT.md`. You hand it a free-text
 Scope is deliberately tight. It never creates `PROJECT.md` (hard-stops and points you at `/grimoire-init` if it is missing), never adds or renames sections, never edits anything outside `## Key Conventions / Constraints` and `## Notes`, and never touches `HISTORIC.md` or any page folder. This is the dual-writer contract with `grimoire-init` — see [GRIMOIRE-CONVENTIONS.md § Project context](GRIMOIRE-CONVENTIONS.md#-project-context) for the full split.
 
 The proposed `PROJECT.md` is presented for review via the IDE-aware pause-point: the file is written to disk so your editor renders the diff, and only after explicit approval does the skill make a single atomic commit (`docs(grimoire): refine project context`) touching only `.grimoire/PROJECT.md`. Orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-know` and `grimoire-update`).
+
+### /grimoire-deps
+
+Dependency audit and update. You optionally scope it to a single package or one ecosystem (`/grimoire-deps "express"`); empty audits everything it detects across npm/pnpm/yarn, pip/poetry/uv, composer, cargo, and go mod (other ecosystems best-effort). A read-only audit sub-agent scores every dependency on four axes — **security** (native audit tooling cross-checked against the GitHub Advisory Database / OSV for CVEs), **semver risk** (patch/minor/major jump), **maturity** (target releases younger than 14 days are flagged *"deixar maturar"*), and **reputation** (web search for hijacked / compromised / deprecated packages, e.g. the Tanstack and Laravel-lang incidents).
+
+It then presents a ranked, most-urgent-first markdown report — IDE-aware, with a best-effort-heuristics disclaimer (a "clean" row is never a security guarantee) — and you select which updates to apply by replying against the report (so it scales to long lists). An apply sub-agent bumps the selected safe updates **one at a time**, each gated by the project's broader build/test/lint (a conscious exception to the filter-only TDD rule, since a bump has global blast radius): on pass it makes one atomic commit per dependency (`chore(deps): bump <pkg> to <ver>`), on fail it reverts just that bump and moves on. Breaking / high-risk upgrades are never executed here — they become an upgrade brief that hands off to `/grimoire-spec`.
+
+Orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-know`, `grimoire-update`, and `grimoire-note`): it writes no page, no `HISTORIC.md`, and no `PROJECT.md` — only the dependency bumps it commits.
 
 ## How it works
 

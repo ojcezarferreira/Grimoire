@@ -61,6 +61,7 @@ O formato `grimoire@grimoire` no comando principal é `nome-do-plugin@nome-do-ma
 | `/grimoire-know <pergunta>` | Responde perguntas sobre o repositório ou a aplicação — somente leitura, com pesquisa na web e citação de fontes quando necessário. | [↓](#grimoire-know)    |
 | `/grimoire-update`        | Compara versão instalada vs. mais recente, mostra o changelog, e te guia pelos comandos oficiais de update.                 | [↓](#grimoire-update)  |
 | `/grimoire-note <nota>`   | Refina cirurgicamente `Key Conventions` e `Notes` em `.grimoire/PROJECT.md` a partir de texto livre — dedup semântica, consolidação retroativa, revisão de diff IDE-aware. | [↓](#grimoire-note)    |
+| `/grimoire-deps [pkg/ecossistema]` | Audita dependências (segurança/semver/maturidade/reputação), aplica as atualizações seguras que você escolher com commits atômicos por dependência gateados pelo build/test, e roteia upgrades quebradores para `/grimoire-spec`. | [↓](#grimoire-deps)    |
 
 ## Skills em detalhe
 
@@ -124,6 +125,14 @@ Writer cirúrgico e incremental do `.grimoire/PROJECT.md`. Você passa uma nota 
 O escopo é deliberadamente apertado. Ele nunca cria `PROJECT.md` (faz hard-stop e te aponta para `/grimoire-init` se o arquivo estiver faltando), nunca adiciona nem renomeia seções, nunca edita nada fora de `## Key Conventions / Constraints` e `## Notes`, e nunca toca em `HISTORIC.md` nem em pasta de page. Esse é o contrato de dual-writer com `grimoire-init` — veja [GRIMOIRE-CONVENTIONS.md § Project context](GRIMOIRE-CONVENTIONS.md#-project-context) para a divisão completa.
 
 O `PROJECT.md` proposto é apresentado para revisão via pause-point IDE-aware: o arquivo é escrito em disco para o editor renderizar o diff, e só depois de aprovação explícita a skill faz um único commit atômico (`docs(grimoire): refine project context`) tocando apenas `.grimoire/PROJECT.md`. Ortogonal ao pipeline Spec → Plan → Execute (mesma família de `grimoire-know` e `grimoire-update`).
+
+### /grimoire-deps
+
+Auditoria e atualização de dependências. Você opcionalmente escopa para um único pacote ou um ecossistema (`/grimoire-deps "express"`); vazio audita tudo que detectar em npm/pnpm/yarn, pip/poetry/uv, composer, cargo e go mod (outros ecossistemas em best-effort). Um sub-agente de auditoria somente-leitura pontua cada dependência em quatro eixos — **segurança** (ferramenta de audit nativa cruzada com a GitHub Advisory Database / OSV em busca de CVEs), **risco de semver** (salto patch/minor/major), **maturidade** (releases-alvo com menos de 14 dias são marcados como *"deixar maturar"*) e **reputação** (busca na web por pacotes sequestrados / comprometidos / depreciados, ex.: os incidentes Tanstack e Laravel-lang).
+
+Em seguida ele apresenta um relatório markdown ranqueado, do mais urgente ao menos — IDE-aware, com um aviso de heurística best-effort (uma linha "limpa" nunca é garantia de segurança) — e você seleciona quais atualizações aplicar respondendo contra o relatório (assim ele escala para listas longas). Um sub-agente de aplicação sobe as atualizações seguras selecionadas **uma de cada vez**, cada uma gateada pelo build/test/lint mais amplo do projeto (uma exceção consciente à regra TDD de só-filtrar, já que um bump tem blast radius global): no sucesso faz um commit atômico por dependência (`chore(deps): bump <pkg> to <ver>`), na falha reverte só aquele bump e segue. Upgrades quebradores / de alto risco nunca são executados aqui — viram um upgrade brief que faz handoff para `/grimoire-spec`.
+
+Ortogonal ao pipeline Spec → Plan → Execute (mesma família de `grimoire-know`, `grimoire-update` e `grimoire-note`): não escreve page, nem `HISTORIC.md`, nem `PROJECT.md` — apenas os bumps de dependência que comita.
 
 ## Como funciona
 
