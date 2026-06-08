@@ -6,7 +6,7 @@
 
 [English](README.md) · **Português (Brasil)**
 
-Um plugin do Claude Code que reúne oito skills num pipeline disciplinado **Spec → Plan → Execute**, com um caminho rápido **Quick**, um passo **Init** que dá contexto de projeto compartilhado a toda sessão, e um passo **Update** que mantém o próprio plugin atualizado.
+Um plugin do Claude Code que reúne dez skills num pipeline disciplinado **Spec → Plan → Execute**, com um caminho rápido **Quick**, um passo **Init** que dá contexto de projeto compartilhado a toda sessão, e um passo **Update** que mantém o próprio plugin atualizado.
 
 </div>
 
@@ -22,6 +22,8 @@ Grimoire é o oposto: um pipeline disciplinado que pergunta até **você** ter c
 **Não é uma ferramenta para pessoas não-técnicas.** Ela assume que você sabe ler código, avaliar um plano e bancar as decisões que ela traz à tona. Se isso é você, o Grimoire sai do seu caminho e termina a page.
 
 > Toda alteração rastreada pelo Grimoire é chamada de **page**: uma pasta sob `.grimoire/pages/` contendo um `SPEC.md` e um ou mais arquivos de step sequenciais, mais uma entrada única em `.grimoire/HISTORIC.md` que registra o status (`[spec]` → `[planned]` → `[finished]`).
+>
+> Quando um objetivo é grande demais para uma única page, o Grimoire o rastreia como um **construct**: um objetivo maior decomposto numa lista plana e ordenada de reference-seeds sob `.grimoire/constructs/`, onde cada reference vira depois uma page pela entrevista normal de spec. Veja [o fluxo de construct](#constructs-objetivos-grandes-demais-para-uma-page).
 
 ## Instalação
 
@@ -30,7 +32,7 @@ Grimoire é o oposto: um pipeline disciplinado que pergunta até **você** ter c
 /plugin install grimoire@grimoire
 ```
 
-É isso — `/grimoire-init`, `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-quick`, `/grimoire-know`, `/grimoire-update` e `/grimoire-note` ficam disponíveis em toda sessão do Claude Code.
+É isso — `/grimoire-init`, `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-quick`, `/grimoire-know`, `/grimoire-update`, `/grimoire-note`, `/grimoire-deps` e `/grimoire-construct` ficam disponíveis em toda sessão do Claude Code.
 
 Para atualizar mais tarde, é só rodar `/grimoire-update` — ele cuida da checagem de versão, do diff do changelog e dos dois comandos oficiais.
 
@@ -62,6 +64,7 @@ O formato `grimoire@grimoire` no comando principal é `nome-do-plugin@nome-do-ma
 | `/grimoire-update`        | Compara versão instalada vs. mais recente, mostra o changelog, e te guia pelos comandos oficiais de update.                 | [↓](#grimoire-update)  |
 | `/grimoire-note <nota>`   | Refina cirurgicamente `Key Conventions` e `Notes` em `.grimoire/PROJECT.md` a partir de texto livre — dedup semântica, consolidação retroativa, revisão de diff IDE-aware. | [↓](#grimoire-note)    |
 | `/grimoire-deps [pkg/ecossistema]` | Audita dependências (segurança/semver/maturidade/reputação), aplica as atualizações seguras que você escolher com commits atômicos por dependência gateados pelo build/test, e roteia upgrades quebradores para `/grimoire-spec`. | [↓](#grimoire-deps)    |
+| `/grimoire-construct <objetivo>` | Decompõe um objetivo grande demais para uma page num construct — uma lista ordenada de reference-seeds sob `.grimoire/constructs/` — que `/grimoire-spec <NNN>` depois expande uma page por vez. | [↓](#grimoire-construct) |
 
 ## Skills em detalhe
 
@@ -80,6 +83,8 @@ O único ponto de entrada do pipeline longo. Você passa um pedido em texto livr
 O número `NNN` é atribuído automaticamente como `max(existentes) + 1`, com zero-padding. O nome da page é um kebab-case curto (2–5 palavras) escolhido para fazer sentido sozinho.
 
 `grimoire-spec` é a única skill que cria uma nova pasta de page e a única que escreve em `HISTORIC.md` além de uma virada de status in-place — ele faz o bootstrap do arquivo se não existir, prependa a nova entrada como item `1` com status `[spec]`, e rotaciona o arquivo para `.grimoire/bag/historic/HISTORIC-N.md` quando chega a cinco entradas.
+
+Dois modos cientes de construct se somam a isso. No modo texto-livre, após analisar o código, se o pedido for **grande demais para uma única page** o `grimoire-spec` recomenda transformá-lo num [construct](#constructs-objetivos-grandes-demais-para-uma-page); com seu aval ele escreve um handoff brief e PARA sem criar page, para você rodar `/grimoire-construct` numa sessão limpa. Quando a entrada é **apenas um número** (`/grimoire-spec 3`), ele entra no modo de consumo de construct: resolve o construct `3`, pega a próxima reference `[pending]`, roda a entrevista completa de spec semeada por ela, produz uma page normal, e vira aquela reference para `[specced]` no `CONSTRUCT.md` com um backlink para a nova page.
 
 ### /grimoire-plan
 
@@ -133,6 +138,24 @@ Auditoria e atualização de dependências. Você opcionalmente escopa para um �
 Em seguida ele apresenta um relatório markdown ranqueado, do mais urgente ao menos — IDE-aware, com um aviso de heurística best-effort (uma linha "limpa" nunca é garantia de segurança) — e você seleciona quais atualizações aplicar respondendo contra o relatório (assim ele escala para listas longas). Um sub-agente de aplicação sobe as atualizações seguras selecionadas **uma de cada vez**, cada uma gateada pelo build/test/lint mais amplo do projeto (uma exceção consciente à regra TDD de só-filtrar, já que um bump tem blast radius global): no sucesso faz um commit atômico por dependência (`chore(deps): bump <pkg> to <ver>`), na falha reverte só aquele bump e segue. Upgrades quebradores / de alto risco nunca são executados aqui — viram um upgrade brief que faz handoff para `/grimoire-spec`.
 
 Ortogonal ao pipeline Spec → Plan → Execute (mesma família de `grimoire-know`, `grimoire-update` e `grimoire-note`): não escreve page, nem `HISTORIC.md`, nem `PROJECT.md` — apenas os bumps de dependência que comita.
+
+### /grimoire-construct
+
+Skill de autoria de um **construct** — um objetivo grande demais para uma page. Você passa o objetivo em texto livre (geralmente o handoff brief que o `/grimoire-spec` escreveu ao julgar um pedido grande demais); ele pesquisa em sub-agentes, te entrevista sobre o que não conseguir inferir, resolve o número do construct `NNN` contra `.grimoire/constructs/` (um contador independente que não colide com números de page) e — após revisão do rascunho — escreve `.grimoire/constructs/NNN-<name>/` com um `CONSTRUCT.md` e uma pasta ordenada `references/N-<name>.md`. Cada reference é um seed do tamanho de uma page, em ordem de execução.
+
+O construct é o roadmap-de-record, **autocontido**: não tem sub-constructs aninhados e nunca ganha entrada em `HISTORIC.md` — só as pages que ele depois gera ganham. O `grimoire-construct` não escreve page, nem `HISTORIC.md`, nem `PROJECT.md`, e termina com um único commit `docs(grimoire): construct <name>`. Ortogonal ao pipeline Spec → Plan → Execute (mesma família de `grimoire-know`, `grimoire-update`, `grimoire-note` e `grimoire-deps`).
+
+## Constructs: objetivos grandes demais para uma page
+
+Uma page é o tamanho certo para uma única feature ou fix. Alguns objetivos são maiores — um projeto greenfield do zero, ou uma feature que de outro modo se espalharia num spec inviável. Para esses, o Grimoire oferece o **construct**: uma lista plana e ordenada de reference-seeds que você expande em pages reais, uma de cada vez.
+
+O fluxo é:
+
+1. **Recomendar.** Você roda `/grimoire-spec "<grande objetivo>"`. Após analisar o pedido, o `grimoire-spec` o julga grande demais para uma page e recomenda um construct. Com seu aval, ele escreve um handoff brief e PARA — nenhuma page é criada.
+2. **Decompor.** Numa sessão nova, de contexto limpo, você roda `/grimoire-construct` com esse brief. Ele pesquisa, te entrevista, e escreve um `CONSTRUCT.md` com um checklist ordenado de reference-seeds `[pending]` mais um arquivo de detalhe em `references/` por seed.
+3. **Expandir, uma page por vez.** Você roda `/grimoire-spec <NNN>` (um número de construct puro). Ele pega a próxima reference `[pending]`, roda a entrevista completa de spec semeada por ela, produz uma page normal (`SPEC.md`, entrada em `HISTORIC.md` nomeando o construct pai), e vira aquela reference para `[specced]` com um backlink para a nova page. Daí cada page segue o caminho usual `plan → execute`. Repita até toda reference estar `[specced]`.
+
+O construct nunca aparece em `HISTORIC.md`; seu progresso é legível somente pelo `CONSTRUCT.md`. O consumo é estritamente a próxima reference pendente em ordem. Veja [GRIMOIRE-CONVENTIONS.md § Construct](GRIMOIRE-CONVENTIONS.md#-construct) para o contrato completo.
 
 ## Como funciona
 

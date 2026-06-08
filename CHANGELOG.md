@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] — 2026-06-08
+
+### Added
+- New **construct** concept: a larger-than-a-page objective container. A construct is a flat, ordered list of reference-seeds living in `.grimoire/constructs/NNN-<name>/` (`CONSTRUCT.md` + an ordered `references/` folder), where each reference is later expanded — through the normal full spec interview — into one real page. Constructs are self-contained: no nested sub-constructs and **no `HISTORIC.md` entry** (only the pages they spawn appear there); `NNN` is an independent counter that does not collide with `pages/`.
+- New `grimoire-construct` skill: researches in sub-agents, interviews the user, resolves the construct `NNN`, and authors `CONSTRUCT.md` plus the ordered `references/N-<name>.md` detail files. Never creates a page and never writes `HISTORIC.md`/`PROJECT.md` — orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-know`, `grimoire-update`, `grimoire-note`, and `grimoire-deps`). Ends with a single `docs(grimoire): construct <name>` commit.
+- `GRIMOIRE-CONVENTIONS.md` — new `§ Construct` section: the single source of truth for the construct artifact (folder layout, `CONSTRUCT.md` format, writer contract, strictly-next-in-order consumption rules, self-containment, and the size-evaluation/handoff-brief trigger).
+
+### Changed
+- `grimoire-spec` gains two construct-aware modes. **Size-evaluation:** in free-text new-page mode, a request judged too large for one page triggers a construct recommendation; on approval it writes a handoff brief to `.grimoire/bag/drafts/construct-brief-<epoch>.md` and STOPS without creating a page. **Bare-number construct-consumption:** input that is only digits resolves a construct, seeds the full spec interview with its next `[pending]` reference, produces a normal page that names its parent construct, and flips that reference to `[specced]` in `CONSTRUCT.md` (atomic `chore: mark reference N specced in construct <name>` commit). Free-text new-page behavior is otherwise unchanged.
+- `GRIMOIRE-CONVENTIONS.md` `§ .grimoire/ layout`, `§ Commits`, `§ Project context`, `§ Sub-agent spawning`, and `§ Pause-point pattern` amended to wire in the construct concept.
+- `README.md`, `README.pt-BR.md`, and `CLAUDE.md` document `grimoire-construct`, the construct flow, the tenth skill, and the `constructs/` layout.
+
 ## [0.9.0] — 2026-06-08
 
 ### Added
@@ -86,6 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `grimoire-init` and `grimoire-quick` aligned with the Spec → Plan → Execute pipeline.
 - README and CLAUDE.md updated for the new pipeline.
 
+[0.10.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.10.0
 [0.9.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.9.0
 [0.8.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.8.0
 [0.7.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.7.0
