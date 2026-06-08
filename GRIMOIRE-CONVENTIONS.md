@@ -1,6 +1,6 @@
 # Grimoire Conventions
 
-Shared, load-bearing rules for the Grimoire workflow skills (`grimoire-init`, `grimoire-spec`, `grimoire-plan`, `grimoire-execute`, `grimoire-quick`). Each SKILL.md references this file as required reading. Do not duplicate these rules inside skill bodies — update them here.
+Shared, load-bearing rules for the Grimoire workflow skills (`grimoire-init`, `grimoire-spec`, `grimoire-plan`, `grimoire-execute`, `grimoire-quick`, `grimoire-deps`). Each SKILL.md references this file as required reading. Do not duplicate these rules inside skill bodies — update them here.
 
 The long-form pipeline is **Spec → Plan → Execute**: `grimoire-spec` gathers context and writes the page's `SPEC.md`, `grimoire-plan` reads that SPEC and writes the executable step files, `grimoire-execute` runs the step files. `grimoire-quick` is a separate fast-path that bypasses all three.
 
@@ -156,7 +156,7 @@ Every Grimoire skill loads `.grimoire/PROJECT.md` (if present) at the top of its
 - **Dual-writer contract.** Only `grimoire-init` and `grimoire-note` may write `PROJECT.md`, and their scopes do not overlap:
   - **`grimoire-init`** is the only skill that may **create** `PROJECT.md`. It is the only skill authorized to write **outside** `## Key Conventions / Constraints` and `## Notes` — `## Purpose`, `## Audience`, `## Tech Stack`, `## Repository Layout`, and `## Current Status` are init-only. It is also the only skill that may **add new sections** to the file.
   - **`grimoire-note`** is authorized to write **only** `## Key Conventions / Constraints` and `## Notes`, incrementally. It never creates the file, never adds sections, and never edits other sections.
-  - **All other skills** (`grimoire-spec`, `grimoire-plan`, `grimoire-execute`, `grimoire-quick`, `grimoire-know`, `grimoire-update`) never write `PROJECT.md` at all — not as a primary action, not as a side effect.
+  - **All other skills** (`grimoire-spec`, `grimoire-plan`, `grimoire-execute`, `grimoire-quick`, `grimoire-know`, `grimoire-update`, `grimoire-deps`) never write `PROJECT.md` at all — not as a primary action, not as a side effect.
 - **Update mode:** when `grimoire-init` is invoked and `.grimoire/PROJECT.md` already exists, it reads the existing file first and asks only about deltas (what has changed or is missing), then rewrites the file in place.
 
 ---
