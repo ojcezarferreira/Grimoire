@@ -41,6 +41,7 @@ The main context is an orchestrator. Implementation work runs inside sub-agents 
 - **`grimoire-execute` on a page with multiple step files and NO `depends-on` frontmatter:** strict serial — spawn one sub-agent **per step file** in numeric order; never start step `N+1` until step `N` has fully completed. This is the default and matches the pre-0.8.0 behavior.
 - **`grimoire-execute` on a page where any step file declares `depends-on` frontmatter:** parallel-wave mode per `§ Parallel execution`. Steps inside a single wave MAY be spawned **concurrently** — one sub-agent per step, each operating inside its own git worktree per the worktree contract. Sequencing **across** waves remains strict: wave `K+1` never starts until wave `K` has settled and all of its worktrees have been torn down. Sequencing **inside** a wave is unconstrained.
 - **`grimoire-quick`:** spawn a single sub-agent for the entire fix once the user has authorized the inline plan.
+- **`grimoire-construct`:** run the research in sub-agent(s) so the orchestrator's context stays lucid; the orchestrator interviews the user, resolves the construct `NNN`, and writes the construct files (`CONSTRUCT.md` + `references/`). See `§ Construct`.
 
 Always instruct the sub-agent with the specific step file (or inline plan) it must execute, and require it to follow `§ TDD` and `§ Commits`.
 
@@ -124,6 +125,8 @@ Per-step atomic commits and the page-level finalization commit follow `§ Commit
 - `grimoire-spec` ends its run with two commits: `docs(grimoire): spec page <name>` for the new `SPEC.md` file, followed by `chore: register page <name> in historic` covering the new `HISTORIC.md` entry (and any rotation to `.grimoire/bag/historic/`).
 - `grimoire-plan` ends its run with a `chore: mark page <name> planned` commit covering the in-place `HISTORIC.md` status update from `[spec]` to `[planned]`. This commit is separate from the step-file commit(s). `grimoire-plan` **never bootstraps, appends, or rotates** `HISTORIC.md`.
 - `grimoire-execute` ends its run with a `chore: mark page <name> finished` commit covering the in-place `HISTORIC.md` status update from `[planned]` to `[finished]`. No files are moved on completion.
+- `grimoire-construct` ends its run with a `docs(grimoire): construct <name>` commit covering the new `CONSTRUCT.md` and its `references/` detail files. See `§ Construct`.
+- `grimoire-spec`, when consuming a construct reference, makes a **separate, atomic** `chore: mark reference N specced in construct <name>` commit covering only the in-place `CONSTRUCT.md` status flip and page backlink for reference `N`. This commit is distinct from the page's own two spec commits. See `§ Construct`.
 
 ---
 
@@ -151,6 +154,11 @@ Every feature, change, or alteration tracked by Grimoire is a **page**. All page
 - The page folder, its `SPEC.md`, and its step files stay in place. **Nothing is moved.**
 - The page's entry in `HISTORIC.md` is updated from `[planned]` to `[finished]`. See `§ Historic`.
 
+**Construct folder (larger-than-a-page objectives):**
+- Path: `.grimoire/constructs/NNN-<name>/`, holding `CONSTRUCT.md` at the root plus a `references/` folder of ordered detail files `references/N-<short-name>.md` (`1-...md`, `2-...md`, … in execution order).
+- `NNN` is an **independent incremental counter** scanned from `.grimoire/constructs/` — it does **not** share or collide with the `pages/` counter.
+- Constructs spawn pages but are not themselves pages: a construct never gets a `HISTORIC.md` entry. See `§ Construct` for the full rules (definition, `CONSTRUCT.md` format, writer contract, consumption, self-containment).
+
 **Project context file:**
 - `.grimoire/PROJECT.md` — persistent project context generated and updated by `grimoire-init`. Loaded by every skill's `[Required Reading]` block. Not subject to `NNN-` numbering.
 
@@ -169,7 +177,7 @@ Every Grimoire skill loads `.grimoire/PROJECT.md` (if present) at the top of its
 - **Dual-writer contract.** Only `grimoire-init` and `grimoire-note` may write `PROJECT.md`, and their scopes do not overlap:
   - **`grimoire-init`** is the only skill that may **create** `PROJECT.md`. It is the only skill authorized to write **outside** `## Key Conventions / Constraints` and `## Notes` — `## Purpose`, `## Audience`, `## Tech Stack`, `## Repository Layout`, and `## Current Status` are init-only. It is also the only skill that may **add new sections** to the file.
   - **`grimoire-note`** is authorized to write **only** `## Key Conventions / Constraints` and `## Notes`, incrementally. It never creates the file, never adds sections, and never edits other sections.
-  - **All other skills** (`grimoire-spec`, `grimoire-plan`, `grimoire-execute`, `grimoire-quick`, `grimoire-know`, `grimoire-update`, `grimoire-deps`) never write `PROJECT.md` at all — not as a primary action, not as a side effect.
+  - **All other skills** (`grimoire-spec`, `grimoire-plan`, `grimoire-execute`, `grimoire-quick`, `grimoire-know`, `grimoire-update`, `grimoire-deps`, `grimoire-construct`) never write `PROJECT.md` at all — not as a primary action, not as a side effect.
 - **Update mode:** when `grimoire-init` is invoked and `.grimoire/PROJECT.md` already exists, it reads the existing file first and asks only about deltas (what has changed or is missing), then rewrites the file in place.
 
 ---
@@ -216,6 +224,47 @@ Newest entry is item `1.`; older entries are renumbered downward. Status is one 
 
 ---
 
+## § Construct
+
+This section is the **single source of truth** for constructs — SKILL.md bodies reference it; they never restate these rules.
+
+**Definition.** A **construct** is a larger-than-a-page objective decomposed into an *ordered, flat list of reference-seeds*. Each reference is later expanded — through the normal full `grimoire-spec` interview — into one real **page**. The construct is the roadmap-of-record; the pages it spawns are the actual work. Constructs are **flat and self-contained**: no nested constructs, no sub-references, no construct-of-constructs.
+
+**Folder layout.**
+- Path: `.grimoire/constructs/NNN-<name>/`.
+- `NNN` is an **independent incremental counter** scanned from `.grimoire/constructs/` — it does **not** share or collide with the `pages/` counter.
+- Contents: `CONSTRUCT.md` at the root, plus a `references/` folder holding ordered detail files `references/N-<short-name>.md` (`1-...md`, `2-...md`, …) in execution order.
+
+**`CONSTRUCT.md` format.**
+- A header/intro describing the larger objective: its purpose, the arc, and any research findings.
+- An **ordered reference checklist**, one entry per reference, each carrying:
+  - a status token — `[pending]` or `[specced]` (binary; there is no third "page finished" state at the construct level),
+  - a short one-line description,
+  - the path to its `references/N-<short-name>.md` detail file,
+  - a **page backlink** that is empty while `[pending]` and is filled with the spawned page's `NNN` once `[specced]`.
+- Concrete entry format while pending:
+  `N. [pending] <short description> → references/N-<short-name>.md`
+  and once specced:
+  `N. [specced] <short description> → references/N-<short-name>.md (page 007)`
+
+**Writer contract (who may touch construct files).**
+- **`grimoire-construct`** is the **only** skill that creates and authors construct files (`CONSTRUCT.md` and the `references/` detail files). It is also the only skill that may rewrite construct content.
+- **`grimoire-spec`** may make exactly **one kind of edit**: flipping a single reference's status from `[pending]` to `[specced]` **in place** and recording that reference's page backlink. This is analogous to the in-place `HISTORIC.md` status flips done by `grimoire-plan`/`grimoire-execute` — a surgical status update, never authoring. It performs no other construct edits.
+- **All other skills** never touch construct files.
+
+**Consumption rules (used by `grimoire-spec` consumption mode).**
+- Consumption is **strictly the next `[pending]` reference in execution order** (lowest-numbered `[pending]`). No out-of-order or user-pick in v1.
+- **Not-found error:** the referenced construct `NNN` does not exist under `.grimoire/constructs/` → hard error, no page created. The operator-facing message and pause-point live in `§ Pause-point pattern`.
+- **All-specced / finished error:** every reference is already `[specced]` → hard error, no page created. The message and pause-point live in `§ Pause-point pattern`.
+- On a successful consumption: the next `[pending]` reference seeds the **full** `grimoire-spec` interview; a **normal page** is produced through the existing Spec phases (page folder, `SPEC.md`, the two spec commits, and a `HISTORIC.md` entry **that names the parent construct**); then that reference is flipped to `[specced]` with the new page's `NNN` backlink, committed atomically with the message defined in `§ Commits`.
+- **No size re-evaluation at consumption time** — references are authored page-sized by `grimoire-construct`; `grimoire-spec` does not re-run the size gatekeeper when consuming a reference.
+
+**Self-containment.** A construct **never** gets a `HISTORIC.md` entry. Only the real pages it spawns appear in `HISTORIC.md`, and each such page's entry/Spec notes its parent construct. Construct progress is readable **solely** from `CONSTRUCT.md`.
+
+**Size-evaluation trigger & handoff-brief contract.** When `grimoire-spec` (new-page mode) judges a free-text request **too large for a single page**, it recommends creating a construct. On user approval it writes a **handoff brief** — the best possible prompt to feed `grimoire-construct` — to `.grimoire/bag/drafts/construct-brief-<epoch>.md` (epoch = Unix seconds at write time) and **STOPS without creating a page**, instructing the user to start a fresh, clean-context session and run `/grimoire-construct` with that brief. The brief **persists** (it is consumed by a different, clean-context session) — `grimoire-spec` never auto-deletes it; `grimoire-construct` deletes it after successfully creating the construct. On decline, `grimoire-spec` proceeds as a normal large page.
+
+---
+
 ## § IDE-aware review
 
 When a skill must show the user a draft, plan, or other markdown content for review before proceeding (e.g., `PROJECT.md` draft, `SPEC.md` draft, `grimoire-quick` plan, `grimoire-update` changelog), prefer rendered markdown in the user's IDE over inline chat text. Inline chat text is hard to scan and has no markdown rendering; an open file in the IDE has both.
@@ -253,6 +302,10 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
 - **`grimoire-init` — draft review:** after composing the proposed `PROJECT.md`, present it for review per `§ IDE-aware review` and PAUSE for the user's confirmation or edits before locking the file in as approved.
 - **`grimoire-spec` — clarifying questions:** after analyzing the codebase and the user's request, ask targeted questions about pain, ambiguities, scope, and critical architectural decisions. Answer the user's questions in turn. Iterate until a consensus on what the page must deliver is reached.
 - **`grimoire-spec` — draft review:** after composing the proposed `SPEC.md`, present it for review per `§ IDE-aware review` and PAUSE for the user's confirmation or edits before locking the file in as approved. Do not write or touch `HISTORIC.md` yet.
+- **`grimoire-spec` — size-evaluation pause:** in new-page mode, after codebase analysis, if the request is judged too large for one page, recommend creating a construct and PAUSE for the user's decision. On approval, write the handoff brief per `§ Construct` and STOP without creating a page; on decline, proceed as a normal large page.
+- **`grimoire-spec` — construct-consumption hard-stops (HARD STOP):** when invoked in consumption mode (bare-number input), STOP immediately with no page created if:
+  - Construct `NNN` does not exist under `.grimoire/constructs/` → `❌ Construct NNN não existe. Rode /grimoire-construct primeiro.`
+  - Every reference is already `[specced]` (construct finished) → `❌ Construct NNN já foi totalmente especificado.`
 - **`grimoire-plan` — precondition check (HARD STOP):** before doing anything else, resolve the page number to `.grimoire/pages/NNN-*/`. If the folder does not exist, if `SPEC.md` is missing, or if the entry's status in `HISTORIC.md` is not `[spec]`, STOP immediately with a clear message naming the current state and the skill the user should run instead. Never offer to run that skill automatically; never silently fix the state.
   - Page NNN does not exist → `❌ Page NNN não existe. Rode /grimoire-spec primeiro.`
   - `SPEC.md` missing → `❌ Page NNN não tem SPEC.md. Rode /grimoire-spec primeiro.`
@@ -272,3 +325,5 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
 - **`grimoire-quick` — scope gatekeeper:** if the request is too large/complex to fit a quick execution, STOP immediately and tell the user to switch to `grimoire-spec` (the entry point to the long-form Spec → Plan → Execute pipeline) instead of generating a plan.
 - **`grimoire-quick` — plan authorization:** after presenting the plan for review per `§ IDE-aware review`, PAUSE and wait for the user's explicit authorization or corrections before spawning the sub-agent. Do not start coding yet.
 - **`grimoire-quick` — final clarity check:** immediately before composing and presenting the plan draft (per `§ IDE-aware review`), the agent must self-review the intended fix and surface any remaining assumption. If anything is still unclear (e.g. expected behavior, scope of touched files, error handling, naming), PAUSE and ask the user using the available question tooling (e.g. `AskUserQuestion`) before the draft is written or pasted. Skip silently only when the fix is fully unambiguous.
+- **`grimoire-construct` — clarifying questions:** after research, interview the user about facts that cannot be inferred from the codebase or the handoff brief, and PAUSE for the answers before authoring the construct.
+- **`grimoire-construct` — draft review:** after composing the proposed `CONSTRUCT.md` and its `references/` detail files, present them for review per `§ IDE-aware review` and PAUSE for the user's confirmation or edits before finalizing.
