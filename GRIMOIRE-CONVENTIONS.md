@@ -20,6 +20,19 @@ The same loop applies regardless of whether the work comes from `grimoire-plan`,
 
 ---
 
+## § Code comments
+
+Comments are the exception, not the default. Code Grimoire writes should read on its own through clear names and structure; a comment earns its place only when the code cannot make the intent obvious by itself.
+
+- **Comment the unusual, not the routine.** Only blocks with non-obvious, surprising, or hard-to-assimilate details deserve a comment — and it should explain the *why* (the reason, tradeoff, or gotcha), not restate the *what*.
+- **Large branching flows MAY get light guideposts.** A long flow with several partitions and paths may carry small comments that orient the reader through the sections — short signposts, not narration of every line.
+- **Methods/helpers: brief, and only if not obvious.** A helper may carry a one-line note of what it does, but only when its name and signature don't already make that clear. Skip the comment when it would just echo the name.
+- **No redundant, commented-out, or TODO-as-comment noise.** Don't comment the obvious, don't leave dead code commented out, and don't narrate the change history — that's what commits are for (`§ Commits`).
+
+This rule governs code written during `§ TDD` (the Refactor step is where excess comments are removed). It applies to `grimoire-execute` and `grimoire-quick`.
+
+---
+
 ## § Sub-agent spawning
 
 The main context is an orchestrator. Implementation work runs inside sub-agents so the orchestrator's context stays lucid.

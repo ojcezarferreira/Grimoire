@@ -35,6 +35,7 @@ Every feature, change, or alteration tracked by Grimoire is called a **page**. A
 All shared, load-bearing rules live in [GRIMOIRE-CONVENTIONS.md](GRIMOIRE-CONVENTIONS.md):
 
 - § TDD (Red/Green/Refactor + the filter-only rule) — does not apply to `grimoire-spec`, which produces a specification, not code.
+- § Code comments (comment the unusual not the routine; brief helper notes only if not obvious; no redundant or commented-out noise) — applies to the code-writing skills (grimoire-execute, grimoire-quick).
 - § Sub-agent spawning
 - § Parallel execution (frontmatter schema `depends-on`/`touches`; DAG construction + cycle detection; Kahn-style waves; worktree contract with mandatory unconditional teardown; partial-failure handling; back-compat fallback to legacy serial)
 - § Commits (atomic + Conventional Commits in English; `docs(grimoire): spec page <name>` + `chore: register page <name> in historic` after spec; `chore: mark page <name> planned` after plan; `chore: mark page <name> finished` after execute)
