@@ -32,7 +32,7 @@ Grimoire é o oposto: um pipeline disciplinado que pergunta até **você** ter c
 /plugin install grimoire@grimoire
 ```
 
-É isso — `/grimoire-init`, `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-quick`, `/grimoire-know`, `/grimoire-update`, `/grimoire-note`, `/grimoire-deps` e `/grimoire-construct` ficam disponíveis em toda sessão do Claude Code.
+É isso — `/grimoire-init`, `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-quick`, `/grimoire-know`, `/grimoire-update`, `/grimoire-note`, `/grimoire-deps`, `/grimoire-construct` e `/grimoire-construct-update` ficam disponíveis em toda sessão do Claude Code.
 
 Para atualizar mais tarde, é só rodar `/grimoire-update` — ele cuida da checagem de versão, do diff do changelog e dos dois comandos oficiais.
 
@@ -65,6 +65,7 @@ O formato `grimoire@grimoire` no comando principal é `nome-do-plugin@nome-do-ma
 | `/grimoire-note <nota>`   | Refina cirurgicamente `Key Conventions` e `Notes` em `.grimoire/PROJECT.md` a partir de texto livre — dedup semântica, consolidação retroativa, revisão de diff IDE-aware. | [↓](#grimoire-note)    |
 | `/grimoire-deps [pkg/ecossistema]` | Audita dependências (segurança/semver/maturidade/reputação), aplica as atualizações seguras que você escolher com commits atômicos por dependência gateados pelo build/test, e roteia upgrades quebradores para `/grimoire-spec`. | [↓](#grimoire-deps)    |
 | `/grimoire-construct <objetivo>` | Decompõe um objetivo grande demais para uma page num construct — uma lista ordenada de reference-seeds sob `.grimoire/constructs/` — que `/grimoire-spec <NNN>` depois expande uma page por vez. | [↓](#grimoire-construct) |
+| `/grimoire-construct-update <NNN\|name> <mudança>` | Altera um construct existente no lugar — adiciona/remove/reordena references, refina uma reference, reescreve a intro ou renomeia — enquanto o prefixo `[specced]` travado permanece imutável. | [↓](#grimoire-construct-update) |
 
 ## Skills em detalhe
 
@@ -144,6 +145,14 @@ Ortogonal ao pipeline Spec → Plan → Execute (mesma família de `grimoire-kno
 Skill de autoria de um **construct** — um objetivo grande demais para uma page. Você passa o objetivo em texto livre (geralmente o handoff brief que o `/grimoire-spec` escreveu ao julgar um pedido grande demais); ele pesquisa em sub-agentes, te entrevista sobre o que não conseguir inferir, resolve o número do construct `NNN` contra `.grimoire/constructs/` (um contador independente que não colide com números de page) e — após revisão do rascunho — escreve `.grimoire/constructs/NNN-<name>/` com um `CONSTRUCT.md` e uma pasta ordenada `references/N-<name>.md`. Cada reference é um seed do tamanho de uma page, em ordem de execução.
 
 O construct é o roadmap-de-record, **autocontido**: não tem sub-constructs aninhados e nunca ganha entrada em `HISTORIC.md` — só as pages que ele depois gera ganham. O `grimoire-construct` não escreve page, nem `HISTORIC.md`, nem `PROJECT.md`, e termina com um único commit `docs(grimoire): construct <name>`. Ortogonal ao pipeline Spec → Plan → Execute (mesma família de `grimoire-know`, `grimoire-update`, `grimoire-note` e `grimoire-deps`).
+
+### /grimoire-construct-update
+
+O segundo escritor autorizado de arquivos de construct — o análogo do `grimoire-note` para constructs. Você passa um número de construct ou `<name>` mais a mudança desejada, e ele altera esse construct **existente** no lugar. Ele dá hard-stop se o construct alvo não existir (`❌ Construct NNN não existe. Rode /grimoire-construct primeiro.`); nunca cria um construct nem uma page.
+
+São quatro famílias de operação: **adicionar / remover / reordenar** references na cauda `[pending]`, **refinar** o detalhe de uma reference `[pending]`, **reescrever** a intro/objetivo do construct e **renomear** o construct (preservando `NNN` via `git mv`). A regra de segurança é o **prefixo `[specced]` travado**: qualquer reference que o `/grimoire-spec` já consumiu é imutável — editá-la, removê-la, reordená-la, ou inserir antes dela é recusado, e a recusa nomeia a reference e seu backlink de page (`❌ Reference 2 já foi especificada (page 007) — não pode ser editada, removida ou reordenada.`). Após qualquer mudança estrutural na cauda pending, ele renumera essa cauda de forma contígua em ordem de execução; o prefixo travado nunca se move.
+
+Ele pesquisa em sub-agentes só quando um add/edit precisa de embasamento, te entrevista para fixar o conjunto exato de operações, e pausa para revisão do rascunho antes de escrever. Não escreve page, nem `HISTORIC.md`, nem `PROJECT.md`, e termina com um único commit `docs(grimoire): update construct <name>`. Ortogonal ao pipeline Spec → Plan → Execute (mesma família de `grimoire-construct`, `grimoire-know`, `grimoire-update`, `grimoire-note` e `grimoire-deps`).
 
 ## Constructs: objetivos grandes demais para uma page
 

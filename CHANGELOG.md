@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] — 2026-06-08
+
+### Added
+- New `grimoire-construct-update` skill: the second authorized writer of construct files (the construct analog of `grimoire-note`). It alters an **existing** construct in place across four operation families — add/remove/reorder references in the `[pending]` tail, refine a `[pending]` reference's detail, rewrite the construct intro/objective, and rename the construct (preserving `NNN`). It enforces the locked-`[specced]`-prefix invariant: editing, removing, reordering a `[specced]` reference — or inserting ahead of one — is refused (the refusal names the reference and its page backlink). After any structural change it renumbers the pending tail contiguously in execution order, leaving the locked prefix untouched. Never creates a construct or a page, never writes `HISTORIC.md`/`PROJECT.md` — orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-construct`, `grimoire-know`, `grimoire-update`, `grimoire-note`, and `grimoire-deps`). Ends with a single `docs(grimoire): update construct <name>` commit.
+
+### Changed
+- `GRIMOIRE-CONVENTIONS.md` `§ Construct` writer contract amended to admit `grimoire-construct-update` as a second authorized writer, plus a new **Alteration rules** subsection (the immutable `[specced]` prefix, pending-tail-only edits, contiguous renumbering, rename-preserves-`NNN`, self-containment).
+- `GRIMOIRE-CONVENTIONS.md` `§ Commits`, `§ Sub-agent spawning`, and `§ Pause-point pattern` amended to wire in the new skill (the `docs(grimoire): update construct <name>` commit, conditional research sub-agents, and the resolution hard-stop / locked-`[specced]` refusal / operation-selection / draft-review pauses).
+- `README.md`, `README.pt-BR.md`, and `CLAUDE.md` document `grimoire-construct-update`, the eleventh skill, and its place alongside `grimoire-construct`.
+
 ## [0.10.0] — 2026-06-08
 
 ### Added

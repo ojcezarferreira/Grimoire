@@ -32,7 +32,7 @@ Grimoire is the opposite: a disciplined pipeline that asks until **you** are cle
 /plugin install grimoire@grimoire
 ```
 
-That's it — `/grimoire-init`, `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-quick`, `/grimoire-know`, `/grimoire-update`, `/grimoire-note`, `/grimoire-deps`, and `/grimoire-construct` are now available in every Claude Code session.
+That's it — `/grimoire-init`, `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-quick`, `/grimoire-know`, `/grimoire-update`, `/grimoire-note`, `/grimoire-deps`, `/grimoire-construct`, and `/grimoire-construct-update` are now available in every Claude Code session.
 
 To pull a newer version later, just run `/grimoire-update` — it handles the version check, changelog diff, and the two official commands for you.
 
@@ -65,6 +65,7 @@ The `grimoire@grimoire` form in the main install command is `plugin-name@marketp
 | `/grimoire-note <note>` | Surgically refine `.grimoire/PROJECT.md`'s Key Conventions and Notes from a free-text input — semantic dedup, retroactive consolidation, IDE-aware diff review. | [↓](#grimoire-note) |
 | `/grimoire-deps [pkg/ecosystem]` | Audit dependencies (security/semver/maturity/reputation), apply the safe updates you pick with per-dependency atomic commits gated by the build/test, and route breaking upgrades to `/grimoire-spec`. | [↓](#grimoire-deps) |
 | `/grimoire-construct <objective>` | Decompose a too-big-for-one-page objective into a construct — an ordered list of reference-seeds under `.grimoire/constructs/` — that `/grimoire-spec <NNN>` later expands one page at a time. | [↓](#grimoire-construct) |
+| `/grimoire-construct-update <NNN\|name> <change>` | Alter an existing construct in place — add/remove/reorder references, refine a reference, rewrite the intro, or rename — while the locked `[specced]` prefix stays immutable. | [↓](#grimoire-construct-update) |
 
 ## Skills in detail
 
@@ -144,6 +145,14 @@ Orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-k
 Authoring skill for a **construct** — a larger-than-a-page objective. You hand it the objective in free text (usually the handoff brief that `/grimoire-spec` wrote when it judged a request too big); it researches in sub-agents, interviews you about anything it cannot infer, resolves the construct number `NNN` against `.grimoire/constructs/` (an independent counter that does not collide with page numbers), and — after draft review — writes `.grimoire/constructs/NNN-<name>/` containing a `CONSTRUCT.md` and an ordered `references/N-<name>.md` folder. Each reference is a page-sized seed in execution order.
 
 The construct is the roadmap-of-record, **self-contained**: it has no nested sub-constructs and never gets a `HISTORIC.md` entry — only the pages it later spawns do. `grimoire-construct` writes no page, no `HISTORIC.md`, and no `PROJECT.md`, and ends with a single `docs(grimoire): construct <name>` commit. Orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-know`, `grimoire-update`, `grimoire-note`, and `grimoire-deps`).
+
+### /grimoire-construct-update
+
+The second authorized writer of construct files — the construct analog of `grimoire-note`. You give it a construct number or `<name>` plus the change you want, and it alters that **existing** construct in place. It hard-stops if the target construct does not exist (`❌ Construct NNN não existe. Rode /grimoire-construct primeiro.`); it never creates a construct or a page.
+
+There are four operation families: **add / remove / reorder** references in the `[pending]` tail, **refine** a `[pending]` reference's detail, **rewrite** the construct intro/objective, and **rename** the construct (preserving `NNN` via `git mv`). The safety rule is the **locked `[specced]` prefix**: any reference that `/grimoire-spec` already consumed is immutable — editing, removing, reordering it, or inserting ahead of it is refused, and the refusal names the reference and its page backlink (`❌ Reference 2 já foi especificada (page 007) — não pode ser editada, removida ou reordenada.`). After any structural change to the pending tail it renumbers that tail contiguously in execution order; the locked prefix never moves.
+
+It researches in sub-agents only when an add/edit needs grounding, interviews you to fix the exact operation set, and pauses for draft review before writing. It writes no page, no `HISTORIC.md`, and no `PROJECT.md`, and ends with a single `docs(grimoire): update construct <name>` commit. Orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-construct`, `grimoire-know`, `grimoire-update`, `grimoire-note`, and `grimoire-deps`).
 
 ## Constructs: objectives too big for one page
 
