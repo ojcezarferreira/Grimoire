@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-06-08
+
+### Added
+- New `grimoire-deps` skill: orthogonal dependency-audit-and-update. Surveys the project's declared dependencies for security exposure (known CVEs/advisories), semver-upgrade risk, release maturity (favoring versions aged ~14 days to dodge fresh-publish regressions and supply-chain compromise), and supply-chain reputation, then presents a ranked, IDE-aware report with interactive selection. Applies each chosen upgrade as a per-dependency atomic commit gated by the project's own build/test — reverting that dependency on failure — and hands breaking upgrades off to `/grimoire-spec` instead of attempting them inline. Never creates a page folder and never touches `HISTORIC.md` — fully orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-know`, `grimoire-update`, and `grimoire-note`).
+
 ## [0.8.0] — 2026-05-25
 
 ### Added
@@ -81,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `grimoire-init` and `grimoire-quick` aligned with the Spec → Plan → Execute pipeline.
 - README and CLAUDE.md updated for the new pipeline.
 
+[0.9.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.9.0
 [0.8.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.8.0
 [0.7.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.7.0
 [0.6.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.6.0
