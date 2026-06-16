@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] — 2026-06-16
+
+### Added
+- New `GRIMOIRE-CONVENTIONS.md` `§ Skill composition` convention: every Grimoire skill surveys the runtime's available-skills list and composes with relevant helpers to enrich its own work. Read-only/assistive helpers run automatically with a `🧩` one-line announcement; write, side-effect, or scope-changing helpers are gated by an explicit user ok folded into the skill's existing pause-points. Conflicting orchestrators are excluded from composition, and helpers never own `.grimoire/` state or override Grimoire contracts. The section is wired into the `[Required Reading]` block of all 11 skills.
+
 ## [0.12.0] — 2026-06-16
 
 ### Added
