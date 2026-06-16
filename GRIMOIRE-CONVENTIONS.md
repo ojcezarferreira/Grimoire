@@ -294,7 +294,7 @@ When a skill must show the user a draft, plan, or other markdown content for rev
    - `grimoire-update` → `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` (same — throwaway).
 
    For the two ephemeral drafts above (`quick-plan`, `grimoire-update-changelog`), generate `<epoch>` as a Unix timestamp in seconds (`$(date +%s)`) at the moment of writing and memorize the resulting path for use during cleanup. This defeats the VSCode markdown preview cache, which keys on file path — without the suffix, a second invocation can show the stale preview from the prior run. The final-destination drafts (`PROJECT.md`, `SPEC.md`) keep their canonical names.
-2. Tell the user in one short line which file was opened and what answer you're waiting for. Example: `📄 Rascunho aberto em .grimoire/PROJECT.md — revise no editor e diga "ok" para seguir, ou liste mudanças.`
+2. Tell the user in one short line which file was opened and what answer you're waiting for. Example: `📄 Draft opened at .grimoire/PROJECT.md — review it in the editor and say "ok" to proceed, or list changes.`
 3. PAUSE for the user's confirmation or edits — same semantics as the inline flow.
 4. On approval:
    - `grimoire-init` / `grimoire-spec`: the file is already at the final path — proceed straight to the commit phase. **No additional Write step needed.**
@@ -308,6 +308,18 @@ When a skill must show the user a draft, plan, or other markdown content for rev
 
 ---
 
+## § User-facing language
+
+Grimoire's hardcoded operator-facing strings are authored in English, but what the user actually sees in the terminal is rendered in the user's own language. The English source is a translatable template, not the literal output.
+
+- **Source-string rule.** Every hardcoded operator-facing string in a skill body or in this conventions file is written in English. This includes the `❌` hard-stop messages, the `📄` IDE-review lines, and any other prose addressed to the operator.
+- **Runtime-rendering rule.** When a skill communicates with the user, it renders all natural-language prose in the user's native language, treating the English source string as a template to translate. This applies to every skill and to every operator-facing message — hard-stops, pauses, clarifying questions, summaries, and status lines alike.
+- **Detection rule.** Determine the user's language in this order: (1) the language the user wrote in during the current session — the primary signal; (2) the OS / system locale, when the session input is insufficient to tell; (3) English, as the final fallback when neither is determinable.
+- **Localization boundary.** Localize only the natural-language prose. Preserve verbatim: command names (`/grimoire-spec`, `/grimoire-plan`, …), status tokens (`[spec]`, `[planned]`, `[finished]`, `[pending]`, `[specced]`), page/identifier placeholders (`NNN`, page names), file paths, and the `❌` / `📄` glyphs. A localized message keeps the same glyph, the same literal tokens, and the same control-flow meaning — only the surrounding prose changes language.
+- **Non-operator-facing content stays English.** Commit messages, `SPEC.md` / step-file / `CONSTRUCT.md` content, code, and identifiers are always English regardless of the user's language (see `§ Commits`).
+
+---
+
 ## § Pause-point pattern
 
 Grimoire skills must pause and wait for the user at well-defined checkpoints. Never proceed past a pause silently.
@@ -318,30 +330,30 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
 - **`grimoire-spec` — draft review:** after composing the proposed `SPEC.md`, present it for review per `§ IDE-aware review` and PAUSE for the user's confirmation or edits before locking the file in as approved. Do not write or touch `HISTORIC.md` yet.
 - **`grimoire-spec` — size-evaluation pause:** in new-page mode, after codebase analysis, if the request is judged too large for one page, recommend creating a construct and PAUSE for the user's decision. On approval, write the handoff brief per `§ Construct` and STOP without creating a page; on decline, proceed as a normal large page.
 - **`grimoire-spec` — construct-consumption hard-stops (HARD STOP):** when invoked in consumption mode (bare-number input), STOP immediately with no page created if:
-  - Construct `NNN` does not exist under `.grimoire/constructs/` → `❌ Construct NNN não existe. Rode /grimoire-construct primeiro.`
-  - Every reference is already `[specced]` (construct finished) → `❌ Construct NNN já foi totalmente especificado.`
+  - Construct `NNN` does not exist under `.grimoire/constructs/` → `❌ Construct NNN does not exist. Run /grimoire-construct first.`
+  - Every reference is already `[specced]` (construct finished) → `❌ Construct NNN has already been fully specified.`
 - **`grimoire-plan` — precondition check (HARD STOP):** before doing anything else, resolve the page number to `.grimoire/pages/NNN-*/`. If the folder does not exist, if `SPEC.md` is missing, or if the entry's status in `HISTORIC.md` is not `[spec]`, STOP immediately with a clear message naming the current state and the skill the user should run instead. Never offer to run that skill automatically; never silently fix the state.
-  - Page NNN does not exist → `❌ Page NNN não existe. Rode /grimoire-spec primeiro.`
-  - `SPEC.md` missing → `❌ Page NNN não tem SPEC.md. Rode /grimoire-spec primeiro.`
-  - Status is `[planned]` → `❌ Page NNN já foi planejada.`
-  - Status is `[finished]` → `❌ Page NNN já foi finalizada.`
-  - Entry missing from `HISTORIC.md` (rotated or never registered) → `❌ Page NNN não está registrada no HISTORIC. Rode /grimoire-spec primeiro.`
+  - Page NNN does not exist → `❌ Page NNN does not exist. Run /grimoire-spec first.`
+  - `SPEC.md` missing → `❌ Page NNN has no SPEC.md. Run /grimoire-spec first.`
+  - Status is `[planned]` → `❌ Page NNN has already been planned.`
+  - Status is `[finished]` → `❌ Page NNN has already been finished.`
+  - Entry missing from `HISTORIC.md` (rotated or never registered) → `❌ Page NNN is not registered in HISTORIC. Run /grimoire-spec first.`
 - **`grimoire-plan` — unclear requirements:** after the precondition passes and the SPEC has been read, if a critical architectural decision is still ambiguous, ask clarifying questions before writing step files.
 - **`grimoire-plan` — final clarity check:** immediately before writing step files in Phase 4, the agent must self-review the planned step breakdown and surface any remaining assumption or open decision. If anything is still unclear (e.g. an architectural choice the agent had to guess, a step boundary the SPEC did not anticipate, a tradeoff with no recorded rationale), PAUSE and ask the user using the available question tooling (e.g. `AskUserQuestion`) before any step file is written. Skip silently only when the plan is fully unambiguous. **When the planner has decided to emit `depends-on` frontmatter on one or more step files**, the final clarity check MUST also surface the full DAG to the user — list each step's `depends-on` set, the computed waves, and any advisory `touches`-overlap warnings between parallel siblings — so the user can veto a suspect parallelization before step files are written. If no frontmatter will be emitted, this DAG-presentation requirement does not apply.
 - **`grimoire-execute` — precondition check (HARD STOP):** before doing anything else, resolve the page number to `.grimoire/pages/NNN-*/`. If the folder does not exist, if no step file (`1-*.md`) is present, or if the entry's status in `HISTORIC.md` is not `[planned]`, STOP immediately with a clear message. Never offer to run another skill automatically; never silently fix the state.
-  - Page NNN does not exist → `❌ Page NNN não existe.`
-  - No step files in the folder → `❌ Page NNN ainda não tem plano. Rode /grimoire-plan NNN primeiro.`
-  - Status is `[spec]` → `❌ Page NNN ainda está em spec. Rode /grimoire-plan NNN primeiro.`
-  - Status is `[finished]` → `❌ Page NNN já foi finalizada.`
+  - Page NNN does not exist → `❌ Page NNN does not exist.`
+  - No step files in the folder → `❌ Page NNN has no plan yet. Run /grimoire-plan NNN first.`
+  - Status is `[spec]` → `❌ Page NNN is still in spec. Run /grimoire-plan NNN first.`
+  - Status is `[finished]` → `❌ Page NNN has already been finished.`
   - Entry missing from `HISTORIC.md` (rotated) → proceed; this matches the existing "skip silently if rotated" rule in `§ Historic` because rotation can happen during long executions.
-  - Cyclic `depends-on` graph detected (any cycle in the DAG) → `❌ Page NNN tem dependências cíclicas entre steps. Rode /grimoire-plan NNN para corrigir.`
-  - `depends-on` reference to a non-existent step number → `❌ Page NNN referencia um step inexistente em depends-on. Rode /grimoire-plan NNN para corrigir.`
+  - Cyclic `depends-on` graph detected (any cycle in the DAG) → `❌ Page NNN has cyclic dependencies between steps. Run /grimoire-plan NNN to fix.`
+  - `depends-on` reference to a non-existent step number → `❌ Page NNN references a non-existent step in depends-on. Run /grimoire-plan NNN to fix.`
 - **`grimoire-quick` — scope gatekeeper:** if the request is too large/complex to fit a quick execution, STOP immediately and tell the user to switch to `grimoire-spec` (the entry point to the long-form Spec → Plan → Execute pipeline) instead of generating a plan.
 - **`grimoire-quick` — plan authorization:** after presenting the plan for review per `§ IDE-aware review`, PAUSE and wait for the user's explicit authorization or corrections before spawning the sub-agent. Do not start coding yet.
 - **`grimoire-quick` — final clarity check:** immediately before composing and presenting the plan draft (per `§ IDE-aware review`), the agent must self-review the intended fix and surface any remaining assumption. If anything is still unclear (e.g. expected behavior, scope of touched files, error handling, naming), PAUSE and ask the user using the available question tooling (e.g. `AskUserQuestion`) before the draft is written or pasted. Skip silently only when the fix is fully unambiguous.
 - **`grimoire-construct` — clarifying questions:** after research, interview the user about facts that cannot be inferred from the codebase or the handoff brief, and PAUSE for the answers before authoring the construct.
 - **`grimoire-construct` — draft review:** after composing the proposed `CONSTRUCT.md` and its `references/` detail files, present them for review per `§ IDE-aware review` and PAUSE for the user's confirmation or edits before finalizing.
-- **`grimoire-construct-update` — target-construct-resolution (HARD STOP):** before doing anything else, resolve the input to an existing `.grimoire/constructs/NNN-<name>/` (by `NNN` number or `<name>`). If it does not exist, STOP immediately, creating or changing nothing, with `❌ Construct NNN não existe. Rode /grimoire-construct primeiro.` Never offer to run `grimoire-construct` automatically.
-- **`grimoire-construct-update` — locked-`[specced]`-operation refusal:** when the user requests an edit, removal, or reorder of a `[specced]` reference, or an insertion ahead of one, **refuse** with a message **naming the reference and its page backlink** (e.g. `❌ Reference 2 já foi especificada (page 007) — não pode ser editada, removida ou reordenada.`) — no files are changed. See the **Alteration rules** in `§ Construct`.
+- **`grimoire-construct-update` — target-construct-resolution (HARD STOP):** before doing anything else, resolve the input to an existing `.grimoire/constructs/NNN-<name>/` (by `NNN` number or `<name>`). If it does not exist, STOP immediately, creating or changing nothing, with `❌ Construct NNN does not exist. Run /grimoire-construct first.` Never offer to run `grimoire-construct` automatically.
+- **`grimoire-construct-update` — locked-`[specced]`-operation refusal:** when the user requests an edit, removal, or reorder of a `[specced]` reference, or an insertion ahead of one, **refuse** with a message **naming the reference and its page backlink** (e.g. `❌ Reference 2 has already been specified (page 007) — it cannot be edited, removed, or reordered.`) — no files are changed. See the **Alteration rules** in `§ Construct`.
 - **`grimoire-construct-update` — clarifying-questions / operation-selection pause:** after resolving the target and (optionally) running research, interview the user to fix the operation set and PAUSE for the answers before composing the alteration.
 - **`grimoire-construct-update` — draft review:** after composing the altered `CONSTRUCT.md` and affected `references/` files, present them for review per `§ IDE-aware review` and PAUSE for approval, edits, or abandonment before finalizing.
