@@ -57,7 +57,7 @@ When a rule is genuinely ambiguous — hedges like "tends to", "usually", "often
 **[Phase 6: IDE-Aware Review]**
 Per `§ IDE-aware review`:
 
-- **IDE detected:** write the proposed `PROJECT.md` content directly to `.grimoire/PROJECT.md` (its final destination — same pattern as `grimoire-init`). Tell the user in one short line that the draft is open and what answer you're waiting for, e.g. `📄 PROJECT.md atualizado em .grimoire/PROJECT.md — revise no editor e diga "ok" para seguir, ou liste mudanças.` (Operator-facing message may be pt-BR per project precedent.)
+- **IDE detected:** write the proposed `PROJECT.md` content directly to `.grimoire/PROJECT.md` (its final destination — same pattern as `grimoire-init`). Tell the user in one short line that the draft is open and what answer you're waiting for, e.g. `📄 PROJECT.md updated at .grimoire/PROJECT.md — review it in the editor and say "ok" to proceed, or list changes.`
 - **Terminal-only fallback:** present the diff inline in chat.
 
 When applicable, surface the Phase 2 split as a short prose narration at this checkpoint: `Detected N distinct rules: …`. Also surface any misfit force-fits from Phase 5 so the user can override the section assignment.
@@ -75,6 +75,6 @@ Per `§ Commits`:
 - The commit must touch **only** `.grimoire/PROJECT.md`. If any other file is dirty in the working tree, do not include it in this commit — warn the user instead and let them stage/commit those changes separately.
 
 **[Style / discipline guardrails]**
-- Operator-facing messages default to English; pt-BR is permitted per project precedent (existing skills' hard-stop messages). Commit messages and SPEC-style content stay English.
+- Operator-facing prose follows `§ User-facing language` (English source strings, rendered in the user's native language at runtime). Commit messages and SPEC-style content stay English.
 - **Single source of truth.** The dual-writer contract between `grimoire-init` and `grimoire-note` lives in `GRIMOIRE-CONVENTIONS.md § Project context` — do not duplicate it here.
 - **No `[Required Reading]` change** in any other skill is required: `.grimoire/PROJECT.md` is already auto-loaded via `§ Project context`.

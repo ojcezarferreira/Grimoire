@@ -19,13 +19,13 @@ Per `§ Pause-point pattern` (grimoire-plan: precondition check). Run these chec
 
 1. **Parse the page number.** Accept `$ARGUMENTS` as a bare integer with or without zero-padding (`42` or `042`); normalize to `NNN` (3-digit zero-padded). Reject anything that is not parseable as an integer.
 2. **Locate the page folder.** Glob `.grimoire/pages/NNN-*/`. Exactly one match expected.
-   - No match → `❌ Page NNN não existe. Rode /grimoire-spec primeiro.` and STOP.
+   - No match → `❌ Page NNN does not exist. Run /grimoire-spec first.` and STOP.
 3. **Confirm `SPEC.md`.** Verify `.grimoire/pages/NNN-[page-name]/SPEC.md` exists and is non-empty.
-   - Missing → `❌ Page NNN não tem SPEC.md. Rode /grimoire-spec primeiro.` and STOP.
+   - Missing → `❌ Page NNN has no SPEC.md. Run /grimoire-spec first.` and STOP.
 4. **Check HISTORIC status.** Read `.grimoire/HISTORIC.md` and find the entry whose `<page-name>` matches the folder.
-   - Entry missing (rotated or never registered) → `❌ Page NNN não está registrada no HISTORIC. Rode /grimoire-spec primeiro.` and STOP.
-   - Status `[planned]` → `❌ Page NNN já foi planejada.` and STOP.
-   - Status `[finished]` → `❌ Page NNN já foi finalizada.` and STOP.
+   - Entry missing (rotated or never registered) → `❌ Page NNN is not registered in HISTORIC. Run /grimoire-spec first.` and STOP.
+   - Status `[planned]` → `❌ Page NNN has already been planned.` and STOP.
+   - Status `[finished]` → `❌ Page NNN has already been finished.` and STOP.
    - Status `[spec]` → proceed.
 5. **Load context.** Read `SPEC.md` in full; re-confirm `PROJECT.md` context is loaded.
 

@@ -40,7 +40,7 @@ Per `§ Pause-point pattern` (`grimoire-construct` — clarifying questions), in
   - `CONSTRUCT.md` at the construct root: a header/intro describing the larger objective (purpose, the arc, relevant research findings), followed by the **ordered reference checklist**. Author **every** entry as `[pending]` with its one-line description, the path to its `references/N-<short-name>.md` detail file, and an **empty** page backlink (backlinks are filled later by `grimoire-spec` on consumption). Follow the exact entry format defined in `§ Construct`.
   - One `references/N-<short-name>.md` per reference (`1-...md`, `2-...md`, … in execution order). Each is a focused seed describing what that future page must deliver — enough detail for `grimoire-spec` to run a full spec interview from it (intent, scope hints, constraints, acceptance signals).
 - Present the composed files for review per `§ IDE-aware review`:
-  - **IDE detected:** create `.grimoire/constructs/NNN-<name>/` (and its `references/` subfolder) and write all files to their **final paths** so the IDE surfaces them with markdown preview. Tell the user in one short line which files are open and what answer you're waiting for (operator-facing message may be pt-BR per project precedent).
+  - **IDE detected:** create `.grimoire/constructs/NNN-<name>/` (and its `references/` subfolder) and write all files to their **final paths** so the IDE surfaces them with markdown preview. Tell the user in one short line which files are open and what answer you're waiting for.
   - **Terminal-only fallback:** present the composed content inline in chat.
 - PAUSE per `§ Pause-point pattern` (`grimoire-construct` — draft review). Wait for explicit approval, requested edits, or abandonment.
   - **On approval:** proceed to Phase 5 (files are already at their final paths in IDE mode).
@@ -61,5 +61,5 @@ Per `§ Pause-point pattern` (`grimoire-construct` — clarifying questions), in
 - If `.grimoire/PROJECT.md` was missing in `[Required Reading]`, remind the user (non-blocking) that running `grimoire-init` once would enrich future runs.
 
 **[Style / discipline guardrails]**
-- Operator-facing messages default to English; pt-BR is permitted per project precedent. Construct content and commit messages stay English.
+- Operator-facing prose follows `§ User-facing language` (English source strings, rendered in the user's native language at runtime). Construct content and commit messages stay English.
 - **Single source of truth.** All construct rules live in `GRIMOIRE-CONVENTIONS.md § Construct` — this body references them and never restates them.

@@ -24,7 +24,7 @@ $ARGUMENTS
 **[Phase 1: Target Resolution & Precondition Check (HARD STOP)]**
 Resolve the user's input to an existing `.grimoire/constructs/NNN-<name>/` folder — by the `NNN` number or by the `<name>`. List `.grimoire/constructs/` and match. If the target does not exist, STOP immediately, creating or changing nothing, with the canonical message from `§ Pause-point pattern`:
 
-> ❌ Construct NNN não existe. Rode /grimoire-construct primeiro.
+> ❌ Construct NNN does not exist. Run /grimoire-construct first.
 
 Do **not** offer to run `grimoire-construct` automatically; do **not** create the folder. Once resolved, read `CONSTRUCT.md` and identify the **locked `[specced]` prefix** (the leading `1..k` references, lowest-numbered) versus the **`[pending]` tail** (`k+1..n`). Every alteration in the following phases is confined to that pending tail (or to construct-level metadata), per `§ Construct` Alteration rules.
 
@@ -37,7 +37,7 @@ Per `§ Pause-point pattern` (`grimoire-construct-update` — clarifying-questio
 **[Phase 4: Validate Against the Locked Prefix]**
 Before composing, check every requested operation against the locked `[specced]` prefix. Per `§ Construct` Alteration rules, any edit, removal, or reorder of a `[specced]` reference — or an insertion **ahead of** a `[specced]` one — is **refused**. Per `§ Pause-point pattern` (`grimoire-construct-update` — locked-`[specced]`-operation refusal), the refusal message **names the reference and its page backlink**, e.g.:
 
-> ❌ Reference 2 já foi especificada (page 007) — não pode ser editada, removida ou reordenada.
+> ❌ Reference 2 has already been specified (page 007) — it cannot be edited, removed, or reordered.
 
 No files are changed when an operation is refused. If a partially-valid operation set mixes legal pending-tail changes with an illegal prefix change, refuse the illegal part and confirm with the user whether to proceed with the legal remainder before composing.
 
@@ -49,7 +49,7 @@ Apply the approved operations to the **pending tail** only:
 - For a **rename**: rename the folder `.grimoire/constructs/NNN-<old>/` → `.grimoire/constructs/NNN-<new>/` **preserving `NNN`**, and fix any internal self-references to the old name. Use `git mv` so the rename is tracked (see Phase 6).
 
 Present the altered files for review per `§ IDE-aware review`:
-- **IDE detected:** write the altered files to their **final paths** (including the renamed folder) so the IDE surfaces them with markdown preview. Tell the user in one short line which files are open and what answer you're waiting for (operator-facing message may be pt-BR per project precedent).
+- **IDE detected:** write the altered files to their **final paths** (including the renamed folder) so the IDE surfaces them with markdown preview. Tell the user in one short line which files are open and what answer you're waiting for.
 - **Terminal-only fallback:** present the altered content inline in chat.
 
 PAUSE per `§ Pause-point pattern` (`grimoire-construct-update` — draft review). Wait for explicit approval, requested edits, or abandonment.
@@ -66,5 +66,5 @@ Commit per `§ Commits`: a single atomic `docs(grimoire): update construct <name
 - If `.grimoire/PROJECT.md` was missing in `[Required Reading]`, give the non-blocking reminder that running `grimoire-init` once would enrich future runs.
 
 **[Style / discipline guardrails]**
-- Operator-facing messages default to English; pt-BR is permitted per project precedent (existing skills' hard-stop messages). Construct content and commit messages stay English.
+- Operator-facing prose follows `§ User-facing language` (English source strings, rendered in the user's native language at runtime). Construct content and commit messages stay English.
 - **Single source of truth.** All construct and alteration rules live in `GRIMOIRE-CONVENTIONS.md § Construct` — this body references them and never restates them.

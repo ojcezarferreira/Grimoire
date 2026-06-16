@@ -19,12 +19,12 @@ Per `§ Pause-point pattern` (grimoire-execute: precondition check). Run these c
 
 1. **Parse the page number.** Accept `$ARGUMENTS` as a bare integer with or without zero-padding (`42` or `042`); normalize to `NNN`. Reject anything not parseable as an integer.
 2. **Locate the page folder.** Glob `.grimoire/pages/NNN-*/`. Exactly one match expected.
-   - No match → `❌ Page NNN não existe.` and STOP.
+   - No match → `❌ Page NNN does not exist.` and STOP.
 3. **Confirm step files.** Verify at least `1-*.md` exists inside the folder.
-   - No step files → `❌ Page NNN ainda não tem plano. Rode /grimoire-plan NNN primeiro.` and STOP.
+   - No step files → `❌ Page NNN has no plan yet. Run /grimoire-plan NNN first.` and STOP.
 4. **Check HISTORIC status.** Find the entry whose `<page-name>` matches the folder.
-   - Status `[spec]` → `❌ Page NNN ainda está em spec. Rode /grimoire-plan NNN primeiro.` and STOP.
-   - Status `[finished]` → `❌ Page NNN já foi finalizada.` and STOP.
+   - Status `[spec]` → `❌ Page NNN is still in spec. Run /grimoire-plan NNN first.` and STOP.
+   - Status `[finished]` → `❌ Page NNN has already been finished.` and STOP.
    - Entry missing entirely (rotated mid-execution) → proceed; this is the non-blocking "skip silently if rotated" rule from `§ Historic`. Note this in the run summary.
    - Status `[planned]` → proceed.
 5. **Read all step files** in the page folder to understand the full scope of execution. If any step or requirement seems contradictory, ask the user for clarification before starting.
@@ -32,8 +32,8 @@ Per `§ Pause-point pattern` (grimoire-execute: precondition check). Run these c
    - If **no step file** carries `depends-on` frontmatter (or the field is missing/empty on every step), select the **legacy strict-serial path** — proceed to Phase 2A unchanged from prior behavior.
    - If **at least one step file** carries `depends-on` frontmatter, select the **parallel-wave path** per `§ Parallel execution`:
      - Build the DAG (nodes = step files, edges = `depends-on` references).
-     - Run cycle detection. If a cycle is found → `❌ Page NNN tem dependências cíclicas entre steps. Rode /grimoire-plan NNN para corrigir.` and STOP.
-     - Verify every `depends-on` reference points to an existing step file. Dangling reference → `❌ Page NNN referencia um step inexistente em depends-on. Rode /grimoire-plan NNN para corrigir.` and STOP.
+     - Run cycle detection. If a cycle is found → `❌ Page NNN has cyclic dependencies between steps. Run /grimoire-plan NNN to fix.` and STOP.
+     - Verify every `depends-on` reference points to an existing step file. Dangling reference → `❌ Page NNN references a non-existent step in depends-on. Run /grimoire-plan NNN to fix.` and STOP.
      - Compute waves (Kahn-style topological levels per `§ Parallel execution`).
      - Proceed to Phase 2B's wave loop.
 

@@ -119,10 +119,10 @@ Run this phase only after `SPEC.md` is committed. Follow `§ Historic` strictly.
 Reached **only** from Phase 0 when the input was bare digits `NNN`. Produces a normal page from the next `[pending]` reference of an existing construct. Reference `§ Construct` (consumption rules + writer contract) and `§ Pause-point pattern` (construct-consumption hard-stops) — do not restate their rules.
 
 **C1 — Resolve the construct.** Glob `.grimoire/constructs/NNN-*/` (matching the input number, with the construct's independent counter).
-- No match → hard-stop per `§ Pause-point pattern`: `❌ Construct NNN não existe. Rode /grimoire-construct primeiro.` Create no page.
+- No match → hard-stop per `§ Pause-point pattern`: `❌ Construct NNN does not exist. Run /grimoire-construct first.` Create no page.
 
 **C2 — Find the next reference.** Read the construct's `CONSTRUCT.md` and pick the **next `[pending]` reference in execution order** (lowest-numbered `[pending]`).
-- If **every reference is already `[specced]`** → hard-stop per `§ Pause-point pattern`: `❌ Construct NNN já foi totalmente especificado.` Create no page.
+- If **every reference is already `[specced]`** → hard-stop per `§ Pause-point pattern`: `❌ Construct NNN has already been fully specified.` Create no page.
 
 **C3 — Seed and run the full interview.** Read the chosen reference's detail file `references/N-<short-name>.md` and use its content to seed a **full** spec interview. Run the normal new-page flow — **Phases 1 → 2 → 3 → 4 → 5 → 6 → 7** — exactly as for a free-text page, with two differences:
 - **Do not run Phase 1.5 (size evaluation).** References are authored page-sized by `grimoire-construct`; the size gatekeeper is never re-run on consumption (per `§ Construct`).
