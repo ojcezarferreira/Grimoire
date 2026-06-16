@@ -48,6 +48,35 @@ Always instruct the sub-agent with the specific step file (or inline plan) it mu
 
 ---
 
+## § Skill composition
+
+This section is the **single source of truth** for how every Grimoire skill discovers and uses *other* locally-installed skills as helpers. SKILL.md bodies reference it; they never restate these rules. Composition lets a skill borrow a sibling's strength (research, review, verification, docs-lookup, …) without ever surrendering Grimoire's own contracts.
+
+1. **Discovery mechanism (no FS scan).** The orchestrator surveys the skill list the Claude Code runtime injects into context (the "available skills" block) together with the `Skill` tool registry, and matches candidate helpers by each skill's `description`. Grimoire performs **no filesystem scanning** of skill directories — it never reads `~/.claude/skills/`, the project's `.claude/skills/`, or any plugin cache to find helpers. Discovery is purely from what the runtime already presents.
+
+2. **Invocation posture: discover always; invoke with a one-line announcement.** Discovery runs on every skill; only invocation is need-driven.
+   - **Read-only / assistive helpers** (research, review, verification, docs-lookup, and the like) are used **automatically** whenever one materially helps, announcing in a single line which helper ran and why (see the announcement template below).
+   - **Helpers that write, have side-effects, or change the task's scope** are surfaced as a *candidate* and require an explicit user **"ok"** before invocation. This write/scope gate **folds into the skill's existing `§ Pause-point pattern` checkpoints** — it is asked at the nearest existing pause-point and **does not introduce a new pause-point or a new pipeline phase**.
+
+3. **Announcement template.** The reusable operator-facing one-liner for read-only/assistive use is prefixed with the `🧩` glyph:
+
+   `🧩 Using <skill-name> to <reason>.`
+
+   Like the `❌` and `📄` glyphs, the `🧩` glyph and the literal `<skill-name>` are preserved **verbatim** while the surrounding prose is localized per `§ User-facing language`. The "may I use `<skill-name>`?" gating prompt for write/scope-changing helpers is likewise operator-facing prose, localized the same way (glyph and skill name verbatim).
+
+4. **Guardrails / exclusions.**
+   - **Exclude conflicting orchestrators / planners.** Any skill that would duplicate or fight Grimoire's own Spec → Plan → Execute pipeline — a competing `init` / `plan` / `review` / spec workflow — is **never** composed with.
+   - **Helpers never own `.grimoire/` state.** A helper skill never takes write-ownership of `.grimoire/` state (`PROJECT.md`, `HISTORIC.md`, `CONSTRUCT.md`, or any page/construct folder). Those writers are fixed by `§ Project context`, `§ Historic`, and `§ Construct`.
+   - **Helpers never override Grimoire contracts.** `§ TDD`, `§ Commits`, `§ Pause-point pattern`, `§ Historic` ownership, the `§ Project context` and `§ Construct` dual-writer contracts, and every hard-stop stay in force regardless of any helper invoked.
+
+5. **Grimoire-on-Grimoire.** Grimoire's own skills MAY invoke one another where a sibling genuinely helps, but each sibling keeps its own write-ownership and hard-stops; composition **never bypasses a precondition hard-stop** (e.g. invoking `grimoire-plan` from within another skill does not skip its `[spec]`-status precondition).
+
+6. **Localization pointer.** All helper announcements and any "may I use X?" prompts are operator-facing prose, rendered in the user's language per `§ User-facing language` — command/skill names and the `🧩` glyph preserved verbatim.
+
+7. **Applicability.** This convention applies to **every** skill, but each skill composes only *where a helper materially helps*. A skill that rarely finds a relevant helper (e.g. `grimoire-update`) simply rarely composes. Discovery is always performed; invocation is need-driven.
+
+---
+
 ## § Parallel execution
 
 `grimoire-execute` MAY run mutually-independent step files of the same page concurrently. This section is the **single source of truth** for the parallel-wave model — SKILL.md bodies reference it; they never restate the rules.
