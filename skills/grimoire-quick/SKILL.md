@@ -5,7 +5,7 @@ argument-hint: Task/fix description
 ---
 
 **[Required Reading]**
-1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ TDD, § Code comments, § Sub-agent spawning, § Commits, § Project context, § Historic, § IDE-aware review, § Pause-point pattern) are load-bearing for this skill. **Note:** quick is fully ephemeral — it never creates a page folder under `.grimoire/pages/` and never writes to `HISTORIC.md`. The only file it may touch outside the actual fix is an ephemeral plan draft at `.grimoire/bag/drafts/quick-plan-<epoch>.md` when running in IDE mode (see `§ IDE-aware review`), which is removed before the skill ends.
+1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ TDD, § Code comments, § Sub-agent spawning, § Commits, § Project context, § Historic, § IDE-aware review, § User-facing language, § Pause-point pattern) are load-bearing for this skill. **Note:** quick is fully ephemeral — it never creates a page folder under `.grimoire/pages/` and never writes to `HISTORIC.md`. The only file it may touch outside the actual fix is an ephemeral plan draft at `.grimoire/bag/drafts/quick-plan-<epoch>.md` when running in IDE mode (see `§ IDE-aware review`), which is removed before the skill ends.
 2. If `.grimoire/PROJECT.md` exists in the project root, read it for project context. If it does not exist, proceed without it and suggest the user run `grimoire-init` once this task is complete.
 3. If `.grimoire/HISTORIC.md` exists, read it for recent-page context. If older context seems relevant, browse `.grimoire/bag/historic/` (newest suffix first). Missing → proceed without it.
 

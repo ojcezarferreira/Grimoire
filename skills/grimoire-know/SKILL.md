@@ -5,7 +5,7 @@ argument-hint: Your question about the repo or the app
 ---
 
 **[Required Reading]**
-1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Only `§ Project context` and `§ Historic` (read-only consumption) apply to this skill. `§ TDD`, `§ Sub-agent spawning` rules for execute/quick, `§ Commits`, `§ IDE-aware review`, and `§ Pause-point pattern` do **not** apply — this skill is pure Q&A and never mutates the repo, makes no commits, and creates no pages.
+1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Only `§ Project context` and `§ Historic` (read-only consumption) apply to this skill. `§ TDD`, `§ Sub-agent spawning` rules for execute/quick, `§ Commits`, `§ IDE-aware review`, `§ User-facing language`, and `§ Pause-point pattern` do **not** apply — this skill is pure Q&A and never mutates the repo, makes no commits, and creates no pages.
 2. If `.grimoire/PROJECT.md` exists in the project root, read it for project context. If it does not exist, proceed without it and, at the end of the run, suggest the user run `grimoire-init` once to enrich future answers (non-blocking — never refuse to answer because `PROJECT.md` is missing).
 3. If `.grimoire/HISTORIC.md` exists, read it for recent-page context. If older context seems relevant to the question, browse `.grimoire/bag/historic/` (newest suffix first). Missing → proceed without it.
 
