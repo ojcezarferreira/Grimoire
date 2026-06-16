@@ -56,6 +56,7 @@ assets/                  ← logo/images for README
 - **A new CHANGELOG entry is part of the release commit, not a follow-up.** The release workflow extracts release notes from it.
 - **`CLAUDE.md` at the plugin root is NOT loaded for end users.** Per Anthropic's plugin spec, it is ignored at install time. End-user context comes from the skills themselves and from `GRIMOIRE-CONVENTIONS.md`.
 - **Vocabulary discipline.** Every change Grimoire tracks is a **page**, not a "feature" / "ticket" / "task" / "plan". Use "page" consistently in skill bodies, docs, and commit messages where the unit of work is referenced.
+- **All user-facing messages default to English** so they translate easily for users; code, commit, and SPEC content is English too.
 
 ## Current Status
 
@@ -64,5 +65,4 @@ Early/active — brand-new plugin, working day-to-day for the author but not yet
 ## Notes
 
 - The runtime currently announces a **VSCode native extension** environment for the maintainer, so the IDE-aware review path (`§ IDE-aware review`) is the active flow when developing the plugin itself — drafts are written to disk for preview, not pasted inline.
-- Some operator-facing messages in skill bodies (e.g., the hard-stop messages in `§ Pause-point pattern`) are in Portuguese-BR by design; SPEC/PLAN/commit content stays in English.
 - The `.grimoire/` directory in this repo is the plugin **dogfooding** itself — pages authored here track changes to the plugin source.
