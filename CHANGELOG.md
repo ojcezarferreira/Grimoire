@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] — 2026-06-16
+
+### Added
+- New `GRIMOIRE-CONVENTIONS.md` `§ User-facing language` convention: hardcoded operator-facing strings are authored in English (canonical translatable templates), but every skill renders terminal communication in the user's native language at runtime — detected from the user's session input, falling back to the OS/system locale, then to English. Literal tokens (command names, status tokens, `NNN`/page identifiers, file paths, and the `❌`/`📄` glyphs) are preserved verbatim; only the surrounding prose is localized. The section is wired into the `[Required Reading]` block of all 11 skills.
+
+### Changed
+- Normalized every hardcoded operator-facing pt-BR string in the plugin source to English: the `❌` hard-stop messages in `§ Pause-point pattern` and their duplicated copies in `grimoire-execute`, `grimoire-plan`, `grimoire-spec`, and `grimoire-construct-update`; and the `📄` IDE-review example lines in `§ IDE-aware review` and `grimoire-note`. The canonical and duplicated copies stay byte-consistent.
+- Removed the contradictory "operator-facing message may be pt-BR per project precedent" notes from `grimoire-note`, `grimoire-construct`, and `grimoire-construct-update`; those bodies now defer to `§ User-facing language`.
+
 ## [0.11.0] — 2026-06-08
 
 ### Added
