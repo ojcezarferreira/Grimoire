@@ -5,7 +5,7 @@ argument-hint: Free-text note(s) to fold into PROJECT.md's Key Conventions or No
 ---
 
 **[Required Reading]**
-1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Only `§ Project context`, `§ IDE-aware review`, and `§ Commits` apply to this skill. `§ TDD`, `§ Sub-agent spawning`, `§ Historic`, `§ User-facing language`, `§ Pause-point pattern` (for pipeline pages), and `§ .grimoire/ layout` (for pages) do **not** apply — this skill is orthogonal to the Spec → Plan → Execute pipeline, never creates a page folder, never touches `HISTORIC.md`, and never spawns execute sub-agents.
+1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Only `§ Skill composition`, `§ Project context`, `§ IDE-aware review`, and `§ Commits` apply to this skill. `§ TDD`, `§ Sub-agent spawning`, `§ Historic`, `§ User-facing language`, `§ Pause-point pattern` (for pipeline pages), and `§ .grimoire/ layout` (for pages) do **not** apply — this skill is orthogonal to the Spec → Plan → Execute pipeline, never creates a page folder, never touches `HISTORIC.md`, and never spawns execute sub-agents.
 2. If `.grimoire/PROJECT.md` exists in the project root, read it for project context — defer the hard-stop check to Phase 1 below so the user-facing message is presented cleanly.
 
 **[Objective]**

@@ -5,7 +5,7 @@ argument-hint: (optional) extra context or focus areas
 ---
 
 **[Required Reading]**
-1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ .grimoire/ layout, § Project context, § Historic, § Commits, § IDE-aware review, § User-facing language, § Pause-point pattern) are load-bearing for this skill.
+1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ Skill composition, § .grimoire/ layout, § Project context, § Historic, § Commits, § IDE-aware review, § User-facing language, § Pause-point pattern) are load-bearing for this skill.
 2. If `.grimoire/HISTORIC.md` exists, read it for recent-page context (older context lives in `.grimoire/bag/historic/`, newest suffix first). Missing → proceed without it; do not create it (bootstrap is owned by `grimoire-spec`, not this skill).
 
 **[Objective]**

@@ -6,7 +6,7 @@ argument-hint: (no arguments)
 
 **[Required Reading]**
 1. Read `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`. This is the source of truth for the **installed** Grimoire version on this machine.
-2. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md` and load `§ IDE-aware review` and `§ User-facing language` — Phase 4 below depends on it to decide how the changelog is shown to the user. Other sections of the conventions do not apply to this skill.
+2. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md` and load `§ Skill composition`, `§ IDE-aware review` and `§ User-facing language` — Phase 4 below depends on it to decide how the changelog is shown to the user. Other sections of the conventions do not apply to this skill.
 3. If `.grimoire/PROJECT.md` exists in the project root, read it for project context only (tone, audience). Missing → proceed without it; do not suggest `grimoire-init` here — this skill is plugin maintenance, not project bootstrapping.
 
 **[Objective]**
