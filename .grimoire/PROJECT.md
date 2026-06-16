@@ -19,7 +19,7 @@ Developers using Claude Code who can read code, evaluate a plan, and own the dec
 - **Skills:** one `skills/<name>/SKILL.md` per skill, each with YAML frontmatter (`name`, `description`, `argument-hint`) and a prompt body. Auto-discovered by Claude Code from `skills/` — no `skills` field in the manifest.
 - **Shared workflow rules:** a single `GRIMOIRE-CONVENTIONS.md` at the repo root, referenced from every SKILL.md via `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`.
 - **Release automation:** `.github/workflows/release.yml` — pushes to `main` that change `.claude-plugin/plugin.json` cut a tag, validate that `plugin.json` and `marketplace.json` versions match, extract the matching CHANGELOG section, and publish a GitHub Release.
-- **Docs are bilingual:** `README.md` (English) and `README.pt-BR.md` (Portuguese — Brazil). User-facing strings in skills are sometimes Portuguese; the spirit is: messages to the operator can be PT-BR, code/commit/spec content is English.
+- **Docs are bilingual:** `README.md` (English) and `README.pt-BR.md` (Portuguese — Brazil). User-facing strings in skill source are English canonical templates, rendered in the operator's native language at runtime per `§ User-facing language`; code, commit, and SPEC content is always English.
 
 ## Repository Layout
 
