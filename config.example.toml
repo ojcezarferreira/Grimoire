@@ -1,10 +1,13 @@
-# Grimoire configuration (see GRIMOIRE-CONVENTIONS.md § Configuration).
+# Grimoire global configuration (see GRIMOIRE-CONVENTIONS.md § Configuration).
 #
-# Precedence, merged key by key: built-in defaults (this file) < global
-# ~/.grimoire/config.toml < project .grimoire/config.toml. The installer copies
-# this file to the global config.toml once and never overwrites it.
+# The installer copies this file to ~/.grimoire/config.toml (the GLOBAL layer)
+# once and never overwrites it. Precedence, merged key by key: built-in defaults
+# (the schema in § Configuration; these values start equal to them) < global
+# ~/.grimoire/config.toml < project .grimoire/config.toml.
 #
-# Each role takes { model, effort }. A role missing here falls back to `default`.
+# Each role takes { model, effort }. A role resolves to the first hit in:
+# project role -> global role -> project `default` -> global `default` ->
+# built-in role (§ Configuration, "Role lookup order").
 #   Claude Code: model = fable | opus | sonnet | haiku
 #   Codex:       model = gpt-6-astra | gpt-6.1-sol | gpt-6.1-terra | gpt-6-luna (newer ids pass through)
 #   Both:        effort = low | medium | high | xhigh | max   (Codex: ultra -> max, with a warning)
