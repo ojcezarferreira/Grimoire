@@ -19,9 +19,10 @@ Update the Grimoire installation on this machine — the home `${GRIMOIRE_HOME}`
 - If the file is missing or empty, stop and tell the user the installation is unreadable — they should reinstall Grimoire with `curl -fsSL https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/install.sh | sh`. Do not proceed.
 
 **[Phase 2: Detect the install kind]**
-- Run `git -C "${GRIMOIRE_HOME}" config --get grimoire.managed` through the shell.
+- Run `git -C "${GRIMOIRE_HOME}" config --local --get grimoire.managed` through the shell (the same check `install.sh` makes).
   - Prints `true` → a **managed clone** made by the installer: Phase 7 runs the installer.
-  - Anything else (no output, an error, no `.git`) → a **development checkout** — the installer's dev mode: Phase 5 prints the dev-mode notice instead.
+  - `${GRIMOIRE_HOME}` has no `.git` → **not a git checkout**: Phase 5 prints the reinstall notice.
+  - Anything else (a git checkout without the marker) → a **development checkout** — the installer's dev mode: Phase 5 prints the dev-mode notice.
 
 **[Phase 3: Fetch latest version]**
 - Fetch `https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/VERSION` per the "fetch a URL" row of `§ Harness adaptation` and trim it.
@@ -32,11 +33,16 @@ Update the Grimoire installation on this machine — the home `${GRIMOIRE_HOME}`
 - **If equal:** print `Grimoire is already up to date (X.Y.Z). Nothing to do.` and end the skill — no pause.
 - **If different:** continue.
 
-**[Phase 5: Development checkout]** — only when Phase 2 found a development checkout
-- Print the notice and STOP — nothing is run, nothing is paused:
+**[Phase 5: Not a managed clone]** — only when Phase 2 found no managed clone
+- Print the matching notice, then the changelog link, and STOP — nothing is run, nothing is paused:
+  - development checkout:
 
-  > `${GRIMOIRE_HOME}` is a development checkout (installed X.Y.Z, latest A.B.C). Update it yourself: run `git pull` in that checkout, then `./install.sh` from it.
-  >
+    > `${GRIMOIRE_HOME}` is a development checkout (installed X.Y.Z, latest A.B.C). Update it yourself: run `git pull` in that checkout, then `./install.sh` from it.
+
+  - no `.git`:
+
+    > `${GRIMOIRE_HOME}` is not a git checkout (installed X.Y.Z, latest A.B.C). Reinstall Grimoire with `curl -fsSL https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/install.sh | sh`.
+
   > Changelog: https://github.com/ojCezarFerreira/grimoire/blob/main/CHANGELOG.md
 
 **[Phase 6: Show changelog & authorize]**
@@ -57,13 +63,13 @@ Update the Grimoire installation on this machine — the home `${GRIMOIRE_HOME}`
 
   `A.B.C` is the latest version from Phase 3. The installer fetches and checks out that tag in the home, re-executes its freshly checked-out self, re-copies every `grimoire-*` skill for the detected agents, refreshes the dependencies, and keeps the global `config.toml`.
 - Show the installer's closing summary to the user verbatim (version, home, agents, skills, deps, config, any `action:` line).
-- If it exits non-zero, show its error output and stop: tell the user the update did not complete and that re-running `/grimoire-update` (or the `curl … | sh` one-liner) retries it.
+- If it exits non-zero, show its error output, tell the user the update did not complete and that re-running `/grimoire-update` (or the `curl … | sh` one-liner) retries it, then go to Phase 8 for the cleanup only and stop.
 
 **[Phase 8: Summary & cleanup]**
-- Print: `Grimoire updated from X.Y.Z to A.B.C. Start a new session so the updated skills are loaded.`
-- Point at the full changelog: `Full changelog: https://github.com/ojCezarFerreira/grimoire/blob/main/CHANGELOG.md`.
-- Delete the memorized `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md`, if Phase 6 wrote it — on success and on failure alike.
+- On success only: print `Grimoire updated from X.Y.Z to A.B.C. Start a new session so the updated skills are loaded.` and point at the full changelog: `Full changelog: https://github.com/ojCezarFerreira/grimoire/blob/main/CHANGELOG.md`.
+- Always: delete the memorized `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md`, if Phase 6 wrote it.
 
 **[Notes]**
 - This skill never spawns sub-agents and never makes commits in the consumer project. Every write to `${GRIMOIRE_HOME}` and to the installed skill directories belongs to `install.sh`; the skill only runs it.
+- On Codex, the fetches and the installer need network access and write outside the workspace, so the user may be asked to approve a sandbox escalation.
 - Operator-facing prose follows `§ User-facing language`; commands, paths, and version strings stay verbatim.
