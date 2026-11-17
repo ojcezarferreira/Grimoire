@@ -51,17 +51,19 @@ cd grimoire
 
 **Requirements.** `git` (except in development mode); Claude Code and/or Codex — an agent is detected when `~/.claude` / `~/.codex` exists or `claude` / `codex` is on the `PATH`, and the installer stops when neither is found and no `--agent` is given; Node.js with `npx` / `npm` for the dependencies (without it they are skipped with a warning). At run time the GitHub backend needs the [`gh`](https://cli.github.com/) CLI, authenticated.
 
-**Codex.** Codex's default `workspace-write` sandbox blocks the network (needed by `gh`, `git fetch`, `git push`) and keeps `.git` read-only, so `git worktree add` and branch creation fail. The skills that write GitHub objects, push, or create branches and worktrees — `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-run`, `/grimoire-adopt`, `/grimoire-construct`, `/grimoire-construct-update`, `/grimoire-init` (labels), `/grimoire-update` — need network access plus a sandbox that permits `.git` writes, or Codex started with `--dangerously-bypass-approvals-and-sandbox` / `-s danger-full-access`. Otherwise the phases that ask no questions turn into approval prompts, or the page ends `blocked`. Even with the sandbox bypassed, Codex's automatic approval review may refuse to `rm -rf` a leftover worktree folder after `git worktree remove --force` and `git worktree prune`; the run then reports that folder's exact path for you to delete by hand instead of failing. Network access alone is `-c sandbox_workspace_write.network_access=true`; to set it for every session:
+**Codex.** Codex's default `workspace-write` sandbox blocks the network (needed by `gh`, `git fetch`, `git push`) and keeps `.git` read-only, so commits, `git worktree add`, and branch creation fail. The skills that write GitHub objects, push, commit, or create branches and worktrees — `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-run`, `/grimoire-adopt`, `/grimoire-construct`, `/grimoire-construct-update`, `/grimoire-init` (labels, documentation commit), `/grimoire-note`, `/grimoire-quick`, `/grimoire-deps` (applying updates), `/grimoire-update` — need network access plus a sandbox that permits `.git` writes, or Codex started with `--dangerously-bypass-approvals-and-sandbox` / `-s danger-full-access`. Otherwise the phases that ask no questions turn into approval prompts, or the page ends `blocked`. Even with the sandbox bypassed, Codex's automatic approval review may refuse to `rm -rf` a leftover worktree folder after `git worktree remove --force` (`git worktree prune` and the `git worktree list` check still follow); the run then reports that folder's exact path for you to delete by hand instead of failing. Network access alone is `-c sandbox_workspace_write.network_access=true`; to set it for every session:
 
 ```toml
 # ~/.codex/config.toml
 sandbox_mode = "danger-full-access"   # what -s danger-full-access does: network and .git writes
 
-# or keep workspace-write and allow only the network (branch / worktree creation still fails):
+# or keep workspace-write and allow only the network (commits and branch / worktree creation still fail):
 # sandbox_mode = "workspace-write"
 # [sandbox_workspace_write]
 # network_access = true
 ```
+
+**Headless runs.** Under `claude -p` (print mode), Claude Code stops background sub-agents ten minutes after the orchestrator's last turn unless `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` is set — set it for unattended `/grimoire-execute` and `/grimoire-run`. Unattended runs also need `--dangerously-skip-permissions` (or an equivalent permission allowlist). From Git Bash, prefix the command with `MSYS_NO_PATHCONV=1` (or write `//grimoire-execute N`) so MSYS does not rewrite `/grimoire-…` into a Windows path. Interactive sessions are unaffected.
 
 ### Flags
 
