@@ -1,86 +1,61 @@
 ---
 name: grimoire-plan
-description: Plan a page with Grimoire — reads SPEC.md and writes sequential step files under the page folder.
+description: Plan a page with Grimoire, interactively — reads the page SPEC (GitHub issue or local SPEC.md), asks about what is still unclear, and writes the step plan as a plan comment on the issue (label grimoire:planned) or as local step files. Optional — /grimoire-execute auto-plans a page that has no plan.
 argument-hint: Page number (e.g. 42)
 ---
 
-**[Required Reading]**
-1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. Its rules (§ TDD, § Sub-agent spawning, § Skill composition, § Parallel execution, § Commits, § .grimoire/ layout, § Project context, § Historic, § User-facing language, § Pause-point pattern) are load-bearing for this skill. **Note:** this skill only **updates the page's `HISTORIC.md` entry status** from `[spec]` to `[planned]` in place — it never bootstraps, appends, or rotates. `HISTORIC.md` ownership (bootstrap + append + rotate) belongs to `grimoire-spec`. This skill requires the page to already have a `SPEC.md` and a `[spec]` entry in `HISTORIC.md`; if either is missing, hard-stop per `§ Pause-point pattern` (grimoire-plan: precondition check).
-2. If `.grimoire/PROJECT.md` exists in the project root, read it for project context. If it does not exist, proceed without it and suggest the user run `grimoire-init` once this task is complete.
-3. If `.grimoire/HISTORIC.md` exists, read it for recent-page context. If older context seems relevant, browse `.grimoire/bag/historic/` (newest suffix first). **Missing → hard-stop**, because the page-status check below requires it.
+**[Required Reading]** — in the order of `§ Documentation`:
+1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Backends` (identifiers, labels, plan-comment format, local cache, `gh` cheat sheet), `§ .grimoire/ layout` (page folder, step files, status frontmatter), `§ Parallel execution` (step frontmatter, DAG, waves), `§ TDD` and `§ Code comments` (the steps you write are executed under them), `§ Sub-agent spawning` (this skill plans **in the session** — the `plan` role is the auto-planner of `grimoire-execute`, not this skill), `§ Harness adaptation`, `§ Configuration`, `§ Documentation`, `§ Skill composition`, `§ Commits` (this skill commits **nothing**), `§ IDE-aware review`, `§ User-facing language`, `§ Pause-point pattern`. **Not applicable:** `§ Review loop`, `§ Run`, `§ Construct` — this skill never touches construct objects.
+2. Read `.grimoire/PROJECT.md` (the index), then `docs/conventions.md` and `docs/architecture.md`. Missing `PROJECT.md` → proceed without it and suggest `grimoire-init` at the end (non-blocking, `§ Documentation`).
+3. Read `.grimoire/config.toml` and `${GRIMOIRE_HOME}/config.toml` per `§ Configuration` (including the one-line `session` notice).
+4. Detect the backend per `§ Backends` and announce it (`🔗 Backend: GitHub (owner/repo)` / `📁 Backend: local`). `[github].mode = "on"` without auth → `❌ GitHub backend required but gh is not authenticated.` and STOP.
 
 **[Objective]**
 Plan the implementation of the page identified by:
 
 $ARGUMENTS
 
+This is the **interactive** planner: use it when the user wants to steer the plan. Without it, `grimoire-execute` auto-plans the page with no interview.
+
 **[Phase 1: Page Resolution & Precondition Check (HARD STOP)]**
-Per `§ Pause-point pattern` (grimoire-plan: precondition check). Run these checks **before** doing anything else; STOP on the first failure with the literal message shown.
+Per `§ Pause-point pattern` (`grimoire-plan`: precondition check). Run these checks **before** anything else; STOP on the first failure with the literal message.
 
-1. **Parse the page number.** Accept `$ARGUMENTS` as a bare integer with or without zero-padding (`42` or `042`); normalize to `NNN` (3-digit zero-padded). Reject anything that is not parseable as an integer.
-2. **Locate the page folder.** Glob `.grimoire/pages/NNN-*/`. Exactly one match expected.
-   - No match → `❌ Page NNN does not exist. Run /grimoire-spec first.` and STOP.
-3. **Confirm `SPEC.md`.** Verify `.grimoire/pages/NNN-[page-name]/SPEC.md` exists and is non-empty.
-   - Missing → `❌ Page NNN has no SPEC.md. Run /grimoire-spec first.` and STOP.
-4. **Check HISTORIC status.** Read `.grimoire/HISTORIC.md` and find the entry whose `<page-name>` matches the folder.
-   - Entry missing (rotated or never registered) → `❌ Page NNN is not registered in HISTORIC. Run /grimoire-spec first.` and STOP.
-   - Status `[planned]` → `❌ Page NNN has already been planned.` and STOP.
-   - Status `[finished]` → `❌ Page NNN has already been finished.` and STOP.
-   - Status `[spec]` → proceed.
-5. **Load context.** Read `SPEC.md` in full; re-confirm `PROJECT.md` context is loaded.
+1. **Parse the page number** per `§ Backends` (identifiers): the issue number on GitHub (`42` or `#42`); `NNN` locally (`42` and `042` both resolve). Reject anything else.
+2. **Load the page.** GitHub: `gh issue view <n> --json number,title,body,labels,milestone,state,comments`. Local: glob `.grimoire/pages/NNN-*/` and read the `SPEC.md` status frontmatter (legacy pages without frontmatter: infer the status per `§ .grimoire/ layout`).
+   - No such page → `❌ Page N does not exist. Run /grimoire-spec first.`
+   - Still a reference (label `grimoire:reference`) → `❌ Page N has not been specified yet. Run /grimoire-spec first.`
+   - Local only — the folder has no `SPEC.md` → `❌ Page N has no SPEC.md. Run /grimoire-spec first.`
+   - `planned` and the page branch `grimoire/<N>-<slug>` already exists (locally or on the remote) → `❌ Page N is already being executed (branch <branch>).` `planned` with **no** branch → print a one-line notice that the page will be re-planned and continue.
+   - In `review` → GitHub: `❌ Page N is already pending human review (PR #X).` — local: `❌ Page N is already pending human review (branch <branch>).`
+   - Closed → `❌ Page N has already been finished.`
+   - `spec` → proceed.
+3. **Load the SPEC** in full (the issue body / `SPEC.md`).
 
-Do **not** offer to run any other skill automatically, and do **not** silently fix the state. The user is in control.
+Never offer to run another skill automatically and never silently fix the state.
 
 **[Phase 2: Analysis & Clarification]**
-- Analyze the current codebase architecture relative to what `SPEC.md` requires.
-- Research and identify the best practices for this specific implementation.
-- Pause per `§ Pause-point pattern` (grimoire-plan: unclear requirements): if any acceptance criterion is still ambiguous, or a critical architectural decision is needed that the SPEC did not lock in, ask clarifying questions before writing step files. Open questions noted in `SPEC.md` are the natural starting point.
+- Analyze the codebase architecture relative to what the SPEC requires; identify the best practices for this implementation.
+- Per `§ Pause-point pattern` (unclear requirements): if an acceptance criterion is still ambiguous, or a critical architectural decision is needed that the SPEC did not lock in, ask before planning. The SPEC's `## Open questions` are the natural starting point.
 
 **[Phase 3: Planning, Scope & Context Management]**
-- CRITICAL: You are entirely responsible for evaluating the complexity and scope of the page.
-- Actively assess potential token usage and context window size required for the execution phase. Your primary goal is to maintain maximum context lucidity and prevent degradation during execution.
-- **Output shape is always a set of sequential step files in the existing page folder.** Per `§ .grimoire/ layout`:
-  - **Simple page:** a single step file `1-[step-name].md` containing the full step-by-step execution plan.
-  - **Larger page:** multiple sequential step files, each a smaller, highly cohesive, sequential portion of the work. Split when token usage or context degradation becomes a risk during execution.
-- The page folder and its `NNN-[page-name]` identity already exist — do not rename, do not move, do not create a new page folder. Choose only the step count and the per-step names.
-- **Inter-step dependencies (opt-in).** When the planned step breakdown contains steps that are **genuinely independent of each other** (different files, no logical ordering needed), the planner MAY emit YAML frontmatter on each step file declaring `depends-on: [<step-numbers>]` and `touches: [<paths>]` per `§ Parallel execution`. This unlocks parallel-wave execution in `grimoire-execute`. Do not restate the schema or wave rules — they live in `§ Parallel execution`.
-- **When NOT to emit frontmatter.** If every step is genuinely sequential — each builds on the prior step's edits in a load-bearing way — the planner SHOULD emit no frontmatter. The page then runs via the legacy strict-serial path, which is the default. Emitting frontmatter where it isn't warranted just adds noise.
-- **DAG construction and validation (before writing step files).** When frontmatter is going to be emitted, the planner MUST, before writing any step file:
-  1. Build the DAG: nodes = step files, edges = `depends-on` references.
-  2. **Detect cycles.** Any cycle is a hard error — the planner MUST NOT write step files with a cyclic DAG. If the natural step breakdown produces a cycle, revise the breakdown until the DAG is acyclic, or abandon frontmatter and fall back to legacy serial.
-  3. **Check for dangling references.** Every step number referenced in any `depends-on` must correspond to an actual planned step. Dangling references are a hard error.
-  4. **Compute waves** (Kahn-style topological levels per `§ Parallel execution`): wave 0 = all roots; wave K = all steps whose `depends-on` lies entirely in waves `< K`.
-  5. **Advisory `touches`-overlap check.** When two sibling steps in the same wave declare overlapping `touches` paths, surface the overlap as a warning (not a hard error) — the user decides at the pause-point whether to keep them parallel or force a serial edge.
-- Before proceeding to Phase 4, perform the final clarity check per `§ Pause-point pattern` (grimoire-plan: final clarity check): self-review the planned step breakdown and, if any architectural choice, step boundary, or tradeoff is still based on a silent assumption, PAUSE and ask the user via `AskUserQuestion` (or equivalent available tool). Only continue to Phase 4 once the plan is fully unambiguous.
-- **DAG presentation at the final clarity check.** When `depends-on` frontmatter will be emitted on one or more step files, the final clarity check MUST also present the full DAG to the user before any step file is written:
-  - Each step number, its planned name, and its `depends-on` set.
-  - The computed waves (e.g., `Wave 0: {1}`, `Wave 1: {2, 3}`, `Wave 2: {4, 5}`).
-  - Any advisory `touches`-overlap warnings.
+- You are entirely responsible for the scope of the execution. Project the token usage and context size each step will need — the goal is maximum context lucidity per executor.
+- **Output shape:** sequential step files `1-<step>.md`, `2-<step>.md`, … (`§ .grimoire/ layout`). A simple page has one step file; a larger page has several small, cohesive steps. Never rename, move, or create the page itself — choose only the step count and names.
+- **Inter-step dependencies (opt-in).** Only when some steps are genuinely independent, emit `depends-on` / `touches` frontmatter per `§ Parallel execution`; when every step builds on the previous one, emit none (strict serial is the default).
+- **DAG validation before anything is written:** build the DAG, refuse cycles and dangling references, compute the waves, and flag `touches` overlaps between siblings as advisory warnings — all per `§ Parallel execution`. A broken graph is fixed by revising the breakdown, never written.
+- **Assumptions.** Every decision taken without the user's explicit confirmation is recorded for the plan's `## Assumptions` (`§ Backends`, plan comment).
+- **Final clarity check** per `§ Pause-point pattern`: self-review the breakdown; if any architectural choice, step boundary, or tradeoff still rests on a silent assumption, PAUSE and ask (question tooling per `§ Harness adaptation`). When frontmatter will be emitted, also present the full DAG — each step's `depends-on`, the waves (e.g. `Wave 0: {1}`, `Wave 1: {2, 3}`), and the `touches` warnings — so the user can veto the parallelization (force serial, change deps, change boundaries).
 
-  The user MUST be able to veto the parallelization (force serial / change deps / change step boundaries) before any step file is written. If the user vetoes, fall back to legacy serial (no frontmatter) or re-plan per the user's correction. If no frontmatter will be emitted, the existing final-clarity-check semantics apply unchanged.
+**[Phase 4: Draft Review]**
+Compose the step files — frontmatter (when the approved DAG requires it) + the markdown body the executor follows — and present them per `§ IDE-aware review`:
+- **GitHub:** the throwaway draft `.grimoire/bag/drafts/plan-<epoch>.md`, holding the full plan comment in the `§ Backends` format — marker line, `## Assumptions`, one `<details><summary>Step K — <name></summary>` block per step containing the step file verbatim, frontmatter included.
+- **Local:** the step files at their final destination in `.grimoire/pages/NNN-<slug>/` (re-plan: replace the previous step files). `SPEC.md` is not touched yet.
+- Terminal-only → inline.
 
-**[Phase 4: Write Step Files]**
-- Inside the existing `.grimoire/pages/NNN-[page-name]/` folder, write each step file as `1-[step-name].md`, `2-[step-name].md`, … in numeric order. Do not touch `SPEC.md`.
-- When the DAG approved at the final clarity check requires frontmatter, prepend each step file with a YAML frontmatter block declaring `depends-on` and (recommended) `touches`, per the schema in `§ Parallel execution`. Steps that are DAG roots use `depends-on: []` (or omit it — both are valid). The markdown body of the step file remains the canonical instructions for the sub-agent.
+PAUSE per `§ Pause-point pattern` (draft review) until approved. Edits → revise in place and re-pause. Abandonment → delete what the draft created (`§ IDE-aware review`).
 
-  Illustrative example (not normative — schema lives in `§ Parallel execution`):
+**[Phase 5: Write]** — no commit (`§ Commits`)
+- **GitHub:** post the plan comment with `gh issue comment <n> -F <draft>` (on a re-plan the newest plan comment wins); ensure the `grimoire:planned` label and swap `grimoire:spec` → `grimoire:planned` in one `gh issue edit` (`§ Backends`, labels; a re-plan is already `grimoire:planned`); write the local cache `.grimoire/pages/<n>-<slug>/K-<step>.md` from the approved step files, replacing any previous cache (`§ Backends`, local cache); delete the draft.
+- **Local:** the step files are already in place (inline fallback: write them now); set `status: planned` in the `SPEC.md` frontmatter (stamping the full frontmatter on a legacy page — `§ .grimoire/ layout`).
 
-  ```
-  ---
-  depends-on: [1]
-  touches:
-    - skills/grimoire-execute/SKILL.md
-  ---
-  # Step 3 — Update grimoire-execute …
-  ```
-- Commit the step files per `§ Commits` (one logical commit per step file, or one commit for all step files if they are tightly coupled; do not bundle the HISTORIC update — that goes in Phase 6).
-
-**[Phase 5: HISTORIC Status Update]**
-Per `§ Historic`: status update only. **Never bootstrap, append, or rotate.**
-
-- Find the entry in `.grimoire/HISTORIC.md` whose `<page-name>` matches the page just planned.
-- Update its status from `[spec]` to `[planned]` **in place**. Do not change its position, do not append a new entry, do not rotate, do not touch any other entry.
-
-**[Phase 6: Historic Commit]**
-- Commit the HISTORIC change per `§ Commits` as a separate commit: `chore: mark page <name> planned`.
-- End the run by telling the user the next step: `/grimoire-execute NNN`.
+**[Phase 6: Closing]**
+Tell the user the next step: `/grimoire-execute <n>`. Never run it automatically. If `PROJECT.md` was missing, remind the user about `grimoire-init`.
