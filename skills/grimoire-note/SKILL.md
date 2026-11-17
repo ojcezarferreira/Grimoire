@@ -53,6 +53,8 @@ Independently of the new input, scan the existing entries of both targets and pr
 **[Phase 6: IDE-Aware Review]**
 Per `§ IDE-aware review`:
 
+**Snapshot first.** Before the first write, snapshot each target file — its content, or the fact that it is absent — into `.grimoire/bag/drafts/note-backup-<epoch>/`, the rule-7 way of `§ IDE-aware review`. A target that already had uncommitted changes is named in a warning at the pause (its changes would land in the commit).
+
 - **IDE detected:** write the proposed content directly to the touched file(s) — their final destinations — and tell the user in one short line which files are open and what answer you're waiting for, e.g. `📄 Draft opened at docs/conventions.md and .grimoire/PROJECT.md — review it in the editor and say "ok" to proceed, or list changes.`
 - **Terminal-only fallback:** present the diff inline in chat.
 
@@ -60,15 +62,15 @@ At this checkpoint also surface: the Phase 2 split (`Detected N distinct rules: 
 
 PAUSE per `§ Pause-point pattern` (`grimoire-note`: draft review). Wait for explicit approval, requested edits, or abandonment.
 
-- **On approval:** proceed to Phase 7.
+- **On approval:** delete the snapshot and proceed to Phase 7.
 - **On requested edits:** re-apply Phases 3–5 with the user's corrections and re-pause.
-- **On abandonment:** restore every touched file to its pre-edit state (`git show HEAD:<path>` written back) and delete a `docs/conventions.md` this run created — never leave an unapproved file on disk.
+- **On abandonment:** restore every target from the snapshot (a file that was absent — e.g. a `docs/conventions.md` this run created — is deleted), then delete the snapshot — never leave an unapproved file on disk.
 
 **[Phase 7: Commit]**
 Per `§ Commits`:
 
 - One atomic commit per invocation, message exactly: `docs(grimoire): refine project context`.
-- The commit covers **only** the touched file(s) — `docs/conventions.md` and/or `.grimoire/PROJECT.md`. If any other file is dirty in the working tree, leave it out of this commit and warn the user instead.
+- The commit covers **only** the touched file(s) — stage exactly `docs/conventions.md` and/or `.grimoire/PROJECT.md` with `git add <paths>`, never `git add -A` or `git commit -a`. Any other path already staged is unstaged (`git restore --staged <path>`); any other dirty file stays out of this commit, and the user is warned.
 
 **[Style / discipline guardrails]**
 - Operator-facing prose follows `§ User-facing language`; the `❌` and `📄` lines keep their glyphs and literal tokens. Commit messages stay English; `docs/conventions.md` follows `[docs].language`.
