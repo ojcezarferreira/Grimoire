@@ -41,7 +41,7 @@ Per `§ Pause-point pattern` (clarifying questions). Typical topics: the underly
 
 **[Phase 3: Page Identity]**
 Per `§ Backends` (identifiers):
-- **GitHub:** a concise English title and a kebab-case `<slug>` (2–5 words, meaningful on its own). New page → the page number is the issue number GitHub assigns at creation (Phase 5) — nothing to compute. Consumption → the page number is the reference issue's number.
+- **GitHub:** a concise English title, meaningful on its own — the page `<slug>` is derived from it later (`§ Backends`, page slug). New page → the page number is the issue number GitHub assigns at creation (Phase 5) — nothing to compute. Consumption → the page number is the reference issue's number.
 - **Local:** list `.grimoire/pages/`, take `max(NNN) + 1` zero-padded to 3 digits (`001` when empty or absent), plus the `<slug>`. Folder: `.grimoire/pages/NNN-<slug>/`.
 
 **[Phase 4: Draft Review]**
