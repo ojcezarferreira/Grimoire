@@ -22,8 +22,10 @@
 # GRIMOIRE-CONVENTIONS.md) that the installer did not clone itself, that checkout
 # is both the source and the home: nothing is cloned or fetched, and --ref,
 # --home and GRIMOIRE_HOME are ignored with a notice. A clone made by this
-# installer is marked with `git config grimoire.managed true`, so running its
-# own install.sh (what grimoire-update does) fetches and checks out --ref.
+# installer is marked with `git config grimoire.managed true`: running its own
+# install.sh (what grimoire-update does) updates that clone in place to --ref,
+# then re-executes the freshly checked-out install.sh once. Only a managed clone
+# is ever updated or deleted (--purge).
 
 set -u
 
@@ -46,6 +48,7 @@ dev_mode=0
 home=""
 agents=""
 ref_used=""
+ref_changed=0
 skills_report=""
 deps_report=""
 config_report=""
@@ -64,7 +67,7 @@ run() {
 		log "[dry-run] $*"
 		return 0
 	fi
-	"$@"
+	"$@" </dev/null
 }
 
 usage() {
@@ -168,6 +171,10 @@ resolve_home() {
 		script_dir=$(cd "$(dirname "$0")" 2>/dev/null && pwd -P) || script_dir=""
 	fi
 	if [ -n "$script_dir" ] && [ -f "$script_dir/GRIMOIRE-CONVENTIONS.md" ] &&
+		is_managed_clone "$script_dir" && [ -z "$requested" ]; then
+		# a managed clone's own install.sh updates that clone, wherever it lives
+		home=$script_dir
+	elif [ -n "$script_dir" ] && [ -f "$script_dir/GRIMOIRE-CONVENTIONS.md" ] &&
 		! is_managed_clone "$script_dir"; then
 		dev_mode=1
 		home=$script_dir
@@ -213,13 +220,19 @@ preflight() {
 	fi
 }
 
-# Latest v* tag of a remote; empty output when it has none.
+# Latest v* release tag of a remote (prereleases such as v1.0.0-rc1 skipped);
+# empty output when it has none.
 latest_tag() {
 	out=$(git ls-remote --tags --refs --sort=-v:refname "$1" 'v*') || return 1
-	printf '%s\n' "$out" | sed -n '1s|.*refs/tags/||p'
+	printf '%s\n' "$out" | sed -n 's|.*refs/tags/||p' | grep -v -- '-' | head -n 1
 }
 
 sync_home() {
+	if [ -e "$home/.git" ] && ! is_managed_clone "$home"; then
+		die "$home is a git checkout not managed by the installer; run ./install.sh from it (dev mode) or choose another --home"
+	fi
+	before=""
+	[ ! -e "$home/.git" ] || before=$(git -C "$home" rev-parse -q --verify HEAD 2>/dev/null)
 	repo=${GRIMOIRE_REPO:-$REPO_DEFAULT}
 	if [ -e "$home/.git" ] && [ -z "${GRIMOIRE_REPO:-}" ]; then
 		repo=$(git -C "$home" remote get-url origin 2>/dev/null) || repo=$REPO_DEFAULT
@@ -239,7 +252,6 @@ sync_home() {
 			run git -C "$home" checkout -q "$ref_used" ||
 				die "cannot check out $ref_used in $home (unknown ref or local changes?)"
 		fi
-		run git -C "$home" config grimoire.managed true
 	elif [ -e "$home" ] && [ -n "$(ls -A "$home" 2>/dev/null)" ]; then
 		die "$home exists and is not a git clone; remove it or pass --home <dir>"
 	else
@@ -249,6 +261,10 @@ sync_home() {
 		# checkout rather than clone --branch: also accepts a commit id
 		run git -C "$home" checkout -q "$ref_used" ||
 			die "ref $ref_used not found in $repo"
+	fi
+	if [ "$opt_dry_run" -eq 0 ] &&
+		[ "$(git -C "$home" rev-parse -q --verify HEAD 2>/dev/null)" != "$before" ]; then
+		ref_changed=1
 	fi
 }
 
@@ -358,7 +374,8 @@ install_deps() {
 		record_dep "skipped (node/npx not found)"
 		return 0
 	fi
-	while read -r type source name post || [ -n "${type:-}" ]; do
+	# fd 3, so no dependency command can read the manifest from stdin
+	while read -r type source name post <&3 || [ -n "${type:-}" ]; do
 		case $type in '' | '#'*) continue ;; esac
 		case $type in
 		skill) install_skill_dep "$source" "$name" ;;
@@ -368,7 +385,7 @@ install_deps() {
 			record_dep "! $name skipped (unknown type $type)"
 			;;
 		esac
-	done <"$manifest"
+	done 3<"$manifest"
 }
 
 install_config() {
@@ -408,21 +425,25 @@ uninstall() {
 	manifest="$home/deps.txt"
 	log "Dependencies were left in place. To remove them:"
 	if [ -f "$manifest" ]; then
-		while read -r type source name post || [ -n "${type:-}" ]; do
+		while read -r type source name post <&3 || [ -n "${type:-}" ]; do
 			case $type in
 			skill) log "  npx skills remove $name -g" ;;
 			npm) log "  npm uninstall -g $source" ;;
 			esac
-		done <"$manifest"
+		done 3<"$manifest"
 	else
 		log "  see deps.txt in https://github.com/ojCezarFerreira/grimoire"
 	fi
 	if [ "$opt_purge" -eq 1 ]; then
 		if [ "$dev_mode" -eq 1 ]; then
 			log "--purge: $home is a dev checkout; not deleting it"
-		elif [ -e "$home" ]; then
+		elif [ ! -e "$home" ]; then
+			:
+		elif is_managed_clone "$home"; then
 			run rm -rf "$home" || die "cannot delete $home"
 			log "Deleted $home"
+		else
+			log "--purge: not an installer-managed clone; not deleting $home"
 		fi
 	fi
 }
@@ -462,6 +483,14 @@ main() {
 	preflight
 	detect_agents
 	[ "$dev_mode" -eq 1 ] || sync_home
+	# run the installer of the release just checked out, not this (older) one
+	if [ "$ref_changed" -eq 1 ] && [ -z "${GRIMOIRE_INSTALL_REEXEC:-}" ] &&
+		[ -f "$home/install.sh" ]; then
+		log "re-executing installer from $home"
+		GRIMOIRE_INSTALL_REEXEC=1
+		export GRIMOIRE_INSTALL_REEXEC
+		exec sh "$home/install.sh" "$@"
+	fi
 	install_skills
 	install_deps
 	install_config
