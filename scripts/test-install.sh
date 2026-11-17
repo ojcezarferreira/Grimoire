@@ -288,7 +288,9 @@ expected=""
 copy=""
 [ "$windows" -eq 1 ] && copy=" --copy"
 lines=0
-while read -r type source name post; do
+# CR stripped: on a CRLF checkout the last field of every line would end in \r
+while IFS= read -r line || [ -n "$line" ]; do
+	read -r type source name post <<<"${line//$'\r'/}"
 	case $type in '' | '#'*) continue ;; esac
 	lines=$((lines + 1))
 	case $type in
@@ -307,6 +309,32 @@ check "deps: no dependency command saw deps.txt on stdin" test ! -s "$STUBLOG.st
 skill_lines=$(grep -c '^skill ' deps.txt)
 check "deps: all $lines deps.txt lines processed (summary ✓ count)" \
 	test "$(grep -c '^  ✓ ' "$LOG")" -eq $((skill_lines * 2 + lines - skill_lines))
+
+# --- deps: a CRLF deps.txt (Windows autocrlf checkout) parses the same -------
+# tr, not grep: Git for Windows' grep drops a CR before end-of-line
+has_cr() { [ -n "$(tr -dc '\r' <"$1")" ]; }
+no_cr() { ! has_cr "$1"; }
+CRLF="$ROOT/crlf checkout"
+mkdir -p "$CRLF"
+cp -R install.sh GRIMOIRE-CONVENTIONS.md config.example.toml skills "$CRLF/"
+for f in deps.txt VERSION; do
+	awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$f" >"$CRLF/$f"
+done
+check "crlf fixture: deps.txt really is CRLF" has_cr "$CRLF/deps.txt"
+: >"$STUBLOG"
+: >"$STUBLOG.stdin"
+rm -f "$STUB/agent-browser" # so npm "installs" it again, as in the LF run
+T=$(new_home deps-crlf)
+with_home "$T" env PATH="$STUB:$GITDIR:/usr/bin:/bin" sh "$CRLF/install.sh"
+check "crlf: install with deps (stubbed) exits 0" test $? -eq 0
+check "crlf: exact dependency commands, in deps.txt order" test "$(cat "$STUBLOG")"$'\n' = "$expected"
+check "crlf: no CR in any dependency command" no_cr "$STUBLOG"
+check "crlf: summary shows the bare version" grep -qx "Grimoire $(tr -d '[:space:]' <VERSION)" "$LOG"
+check "crlf: no CR in the install output" no_cr "$LOG"
+with_home "$T" sh "$CRLF/install.sh" --uninstall
+check "crlf: --uninstall exits 0" test $? -eq 0
+check "crlf: uninstall hints are exact" grep -qx "  npx skills remove ponytail-review -g" "$LOG"
+check "crlf: no CR in the uninstall hints" no_cr "$LOG"
 
 # --- warning when the 0.13 plugin is still installed -----------------------
 T=$(new_home plugin)
