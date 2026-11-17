@@ -1,65 +1,71 @@
 ---
 name: grimoire-construct
-description: Research + interview a larger-than-a-page objective into a construct — an ordered list of reference-seeds toward that objective — under .grimoire/constructs/NNN-<name>/.
+description: Research + interview a larger-than-a-page objective into a construct — an ordered list of page-sized reference-seeds, with dependencies where references are genuinely independent — stored as a GitHub milestone with one grimoire:reference issue per reference, or locally under .grimoire/constructs/NNN-<name>/. Commits nothing.
 argument-hint: An objective too large for one page, or a path to a construct brief
 ---
 
-**[Required Reading]**
-1. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md`. The sections that apply to this skill are: `§ Construct` (the single source of truth for the construct artifact — definition, folder layout, `CONSTRUCT.md` format, writer contract, self-containment), `§ .grimoire/ layout` (the `constructs/` folder structure), `§ Sub-agent spawning` (research runs in sub-agents; the orchestrator stays lucid), `§ Skill composition`, `§ Commits` (the `docs(grimoire): construct <name>` commit), `§ User-facing language`, `§ Pause-point pattern` (the clarifying-questions and draft-review pauses), `§ Project context` (read `PROJECT.md`; never write it), and `§ IDE-aware review` (the draft surface). **Not applicable:** `§ TDD`, `§ Historic`, and the Spec → Plan → Execute page lifecycle do **not** apply — this skill is orthogonal (same family as `grimoire-init` / `grimoire-note` / `grimoire-deps`) and writes no page, no `SPEC.md`, and no `HISTORIC.md` entry. **Do not restate any `§ Construct` rule in this body — reference it.**
-2. If `.grimoire/PROJECT.md` exists in the project root, read it for project context. If it does not exist, proceed without it and, at the end of the run, suggest the user run `grimoire-init` once to enrich future runs (non-blocking per `§ Project context`).
-3. If `.grimoire/HISTORIC.md` exists, read it read-only for recent-page recency context. Absence is non-blocking — this skill does not write or depend on `HISTORIC.md`.
-4. **If invoked with a handoff brief** — a path to (or pasted content of) a `.grimoire/bag/drafts/construct-brief-<epoch>.md` written by `grimoire-spec`'s size-evaluation pause — read it as the seed of the objective. Memorize its exact path for the Phase 6 cleanup.
+**[Required Reading]** — in the order of `§ Documentation`:
+1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Construct` (the single source of truth for the construct — storage per backend, reference status, `depends-on` between references, writer contract, handoff brief), `§ Backends` (milestone and page markers, labels, `gh` cheat sheet), `§ .grimoire/ layout` (local construct folder + frontmatter), `§ Sub-agent spawning` (the `research` role), `§ Harness adaptation`, `§ Configuration`, `§ Documentation`, `§ Skill composition`, `§ Commits` (this skill commits **nothing**), `§ IDE-aware review`, `§ User-facing language`, `§ Pause-point pattern`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Parallel execution`, `§ Review loop`, `§ Run` — this skill is orthogonal to the page pipeline and creates no page. **Do not restate any `§ Construct` rule in this body — reference it.**
+2. Read `.grimoire/PROJECT.md` (the index), then `docs/conventions.md` and any other linked doc the objective touches. Missing `PROJECT.md` → proceed without it and suggest `grimoire-init` at the end (non-blocking, `§ Documentation`).
+3. Read `.grimoire/config.toml` and `${GRIMOIRE_HOME}/config.toml` per `§ Configuration` (including the one-line `session` notice).
+4. Detect the backend per `§ Backends` and announce it (`🔗 Backend: GitHub (owner/repo)` / `📁 Backend: local`). `[github].mode = "on"` without auth → `❌ GitHub backend required but gh is not authenticated.` and STOP.
+5. **If invoked with a handoff brief** — a path to (or the pasted content of) a `.grimoire/bag/drafts/construct-brief-<epoch>.md` written by `grimoire-spec`'s size-evaluation pause — read it as the seed of the objective and memorize its exact path for Phase 6.
 
 **[Objective]**
-Turn the user's larger-than-a-page objective (or the seeding handoff brief) into a **construct**: a flat, ordered list of page-sized reference-seeds persisted under `.grimoire/constructs/NNN-<name>/`, per `§ Construct`. Each reference is a focused seed that `grimoire-spec` will later expand — through its normal full interview — into one real page. The construct is the roadmap-of-record; the pages it spawns are the actual work.
+Turn the user's larger-than-a-page objective (or the seeding handoff brief) into a **construct** per `§ Construct`: a flat, ordered list of page-sized reference-seeds, each later expanded by `grimoire-spec` — through its full interview — into one real page. The construct is the roadmap-of-record; the pages it spawns are the actual work.
 
 User's objective (or handoff-brief path / content):
 
 $ARGUMENTS
 
 **[Hard constraints — orthogonal skill]**
-- **Never** write to `.grimoire/HISTORIC.md`. **Never** write to `.grimoire/PROJECT.md`. **Never** create a page folder under `.grimoire/pages/`.
-- Authoring and rewriting construct files (`CONSTRUCT.md` and the `references/` detail files) belongs to **this skill only**. `grimoire-spec` may only flip a single reference's status in place when it consumes one — never author. This is the `§ Construct` writer contract; do not duplicate it here.
-- Keep the construct **flat and self-contained** per `§ Construct`: no nested constructs, no sub-references, no `HISTORIC.md` entry for the construct itself.
+- Never create a page: no `grimoire:spec` issue, no `.grimoire/pages/` folder. Never write `docs/`, `PROJECT.md`, or `config.toml` (`§ Documentation`).
+- This skill is the only one that brings a construct into existence (`§ Construct`, writer contract). Keep it flat and self-contained.
 
 **[Phase 1: Research]**
-Per `§ Sub-agent spawning`, run the research inside sub-agent(s) so the orchestrator's context stays lucid. The orchestrator stays in charge of the interview, the `NNN` resolution, and the construct writes.
-- Brief each research sub-agent with a self-contained prompt naming the objective (or the handoff brief's content) and the project context from `PROJECT.md`. Equip it with `Read`, `Grep`, `Glob`, read-only `Bash`, and — when the objective's established shape depends on facts outside the repo — `WebSearch` / `WebFetch`.
-- The research goal is the **decomposition**: analyze the codebase (and, when relevant, the established external shape of the objective) to propose a flat, ordered list of reference-seeds where **each reference is sized to fit one normal page**. A reference too big to spec in one page interview must be split; trivial slivers should be merged.
-- The sub-agent returns the proposed ordered reference list (each with a short description and the rationale for its size/ordering) plus an explicit list of anything it was uncertain about. Do not invent facts — uncertainties become questions for Phase 2.
+Spawn `research` sub-agent(s) (`§ Sub-agent spawning`, `§ Harness adaptation`) so the orchestrator stays lucid; the orchestrator keeps the interview, the identity, and the writes.
+- Brief each one with the objective (or the brief's content), the docs pointers of `[Required Reading]` step 2, and — when the objective's established shape depends on facts outside the repo — permission to search the web.
+- Goal: the **decomposition** — a flat, ordered list of reference-seeds, **each sized to one normal page** (split what a single spec interview could not cover; merge trivial slivers), **and** the `depends-on` between references wherever some are genuinely independent of each other (`§ Construct`, `depends-on` between references).
+- It returns the ordered list (one-line description + size / ordering rationale per reference), the proposed dependencies, and an explicit list of uncertainties. No invented facts — uncertainties become Phase 2 questions.
 
 **[Phase 2: Clarifying Questions]**
-Per `§ Pause-point pattern` (`grimoire-construct` — clarifying questions), interview the user about only what cannot be inferred from the codebase or the handoff brief: scope boundaries (what's in / deliberately out), the execution ordering of the references, and the decomposition granularity (how finely to split). Surface the research sub-agent's uncertainties here. PAUSE for the answers and iterate to consensus on the ordered reference list before authoring anything.
+Per `§ Pause-point pattern` (`grimoire-construct`: clarifying questions): ask only what the codebase and the brief cannot answer — scope boundaries, decomposition granularity, the execution order, and the proposed `depends-on`. Surface the research uncertainties. PAUSE and iterate to consensus on the ordered list and its dependencies before authoring anything.
 
-**[Phase 3: NNN Resolution & Construct Name]**
-- List `.grimoire/constructs/` (if it exists). Extract the integer `N` from each `NNN-*` subfolder name. Choose `max(N) + 1`, zero-padded to 3 digits (`NNN`). If the folder is empty or does not exist, use `001`. This counter is **independent** of `.grimoire/pages/` per `§ .grimoire/ layout` — it does not share or collide with the page counter.
-- Choose `<name>` in short, descriptive kebab-case (2–5 words) that reads meaningfully on its own. The final folder is `.grimoire/constructs/NNN-<name>/`.
+**[Phase 3: Construct Identity]**
+- **GitHub:** the milestone title = the construct `<name>` — short, descriptive, meaningful on its own. The construct number is the milestone number GitHub assigns at creation (Phase 5).
+- **Local:** list `.grimoire/constructs/`, take `max(NNN) + 1` zero-padded to 3 digits (`001` when empty or absent) — an independent counter (`§ .grimoire/ layout`) — plus a kebab-case `<name>` (2–5 words). Folder: `.grimoire/constructs/NNN-<name>/`.
 
 **[Phase 4: Compose & Draft Review]**
-- Compose the construct files per the `§ Construct` format:
-  - `CONSTRUCT.md` at the construct root: a header/intro describing the larger objective (purpose, the arc, relevant research findings), followed by the **ordered reference checklist**. Author **every** entry as `[pending]` with its one-line description, the path to its `references/N-<short-name>.md` detail file, and an **empty** page backlink (backlinks are filled later by `grimoire-spec` on consumption). Follow the exact entry format defined in `§ Construct`.
-  - One `references/N-<short-name>.md` per reference (`1-...md`, `2-...md`, … in execution order). Each is a focused seed describing what that future page must deliver — enough detail for `grimoire-spec` to run a full spec interview from it (intent, scope hints, constraints, acceptance signals).
-- Present the composed files for review per `§ IDE-aware review`:
-  - **IDE detected:** create `.grimoire/constructs/NNN-<name>/` (and its `references/` subfolder) and write all files to their **final paths** so the IDE surfaces them with markdown preview. Tell the user in one short line which files are open and what answer you're waiting for.
-  - **Terminal-only fallback:** present the composed content inline in chat.
-- PAUSE per `§ Pause-point pattern` (`grimoire-construct` — draft review). Wait for explicit approval, requested edits, or abandonment.
-  - **On approval:** proceed to Phase 5 (files are already at their final paths in IDE mode).
-  - **On requested edits:** re-apply the composition with the corrections and re-pause.
-  - **On abandonment:** delete the unapproved files (the `CONSTRUCT.md`, the `references/` files, and the construct folder) — never leave an uncommitted, unapproved construct on disk.
+Compose the construct per `§ Construct` (storage per backend) — content in English:
+- the **intro**: the larger objective, the arc, the relevant research findings;
+- the **ordered reference list**, every entry pending, with its one-line description and its dependencies;
+- one **seed per reference**: what that future page must deliver — intent, scope hints, constraints, acceptance signals — enough for `grimoire-spec` to run a full interview from it.
 
-**[Phase 5: Finalize & Commit]**
-- **IDE mode:** the approved files are already at their final paths under `.grimoire/constructs/NNN-<name>/`. No additional write is needed.
-- **Inline fallback:** create the construct folder and `references/` subfolder, then write the approved `CONSTRUCT.md` and all `references/N-<short-name>.md` files.
-- Commit per `§ Commits`: `docs(grimoire): construct <name>`. This single commit covers the new `CONSTRUCT.md` and all its `references/` detail files. No `HISTORIC.md` and no `PROJECT.md` are touched.
+Present it per `§ IDE-aware review`:
+- **GitHub:** the throwaway draft `.grimoire/bag/drafts/construct-<epoch>.md`, holding the future milestone description and every reference seed.
+- **Local:** the final destination — `CONSTRUCT.md` (frontmatter `status: open`, intro, checklist in the `§ Construct` local format) and `references/N-<short-name>.md` in execution order (frontmatter `status: pending` and, when set, `depends-on` — earlier references only).
+- Terminal-only → inline.
+
+PAUSE per `§ Pause-point pattern` (`grimoire-construct`: draft review). Edits → revise in place and re-pause. Abandonment → delete everything the draft created (`§ IDE-aware review`).
+
+**[Phase 5: Persist]** — no commit (`§ Commits`)
+- **GitHub**, in this order:
+  1. Create the milestone — `gh api repos/{owner}/{repo}/milestones -f title=<name> -F description=@desc.md`, the description holding line 1 `<!-- grimoire:construct v=1 -->` and the intro — to obtain its number `M`.
+  2. Ensure the `grimoire:reference` label (label-ensure rule, `§ Backends`). Then, in list order, create one issue per reference: `gh issue create -t "<title>" -F body.md -l grimoire:reference -m "<milestone title>"`, the body's line 1 being `<!-- grimoire:page v=1 construct=#M order=<n> depends-on=<issue numbers> -->` (omit `depends-on` when empty), followed by the seed. Dependencies use the issue numbers created earlier in this loop.
+  3. Complete the milestone description — marker line, intro / arc / findings, then `## References`: the numbered list `1. #<issue> — <one line>` in execution order, with the optional `(after #…)` suffix mirroring the dependencies (`gh api -X PATCH repos/{owner}/{repo}/milestones/<M> -F description=@desc.md`).
+  4. Delete the draft.
+- **Local:** the approved files are already in place (inline fallback: write them now).
 
 **[Phase 6: Handoff-Brief Cleanup]**
-- If a handoff brief seeded this run (a `.grimoire/bag/drafts/construct-brief-<epoch>.md` passed in or read in `[Required Reading]`), delete it now — it was the throwaway prompt that fed this construct, and per `§ Construct` `grimoire-construct` cleans it up on success.
-- If no brief seeded the run (the skill was invoked directly), there is nothing to delete — do **not** fail or warn.
+If a handoff brief seeded this run, delete it now — `grimoire-construct` cleans it up on success (`§ Construct`). No brief → nothing to delete; do not warn.
 
 **[Phase 7: Closing]**
-- Tell the user how to consume the construct: run `/grimoire-spec <NNN>` with the bare construct number to expand the next `[pending]` reference into a real page through the normal full spec interview. **Do not run it automatically** — consumption is a separate, user-initiated step.
-- If `.grimoire/PROJECT.md` was missing in `[Required Reading]`, remind the user (non-blocking) that running `grimoire-init` once would enrich future runs.
+Tell the user the construct number `<m>` and the two ways forward — never run either automatically:
+- `/grimoire-spec <m>` — expand the next pending reference into a page, one interview at a time;
+- `/grimoire-run <m>` — interview every pending reference, then plan, execute, and review all pages autonomously (`§ Run`).
+
+If `PROJECT.md` was missing, remind the user about `grimoire-init`.
 
 **[Style / discipline guardrails]**
-- Operator-facing prose follows `§ User-facing language` (English source strings, rendered in the user's native language at runtime). Construct content and commit messages stay English.
-- **Single source of truth.** All construct rules live in `GRIMOIRE-CONVENTIONS.md § Construct` — this body references them and never restates them.
+- Operator-facing prose follows `§ User-facing language`; milestone, issue, and file content stays English.
+- **Single source of truth.** All construct rules live in `§ Construct` — this body references them and never restates them.
