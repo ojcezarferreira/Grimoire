@@ -78,7 +78,7 @@ As skills são **cópias**, não symlinks: cada execução apaga as pastas `grim
 
 ### Dependências
 
-Instaladas a partir das fontes upstream — **nunca empacotadas** —, então a licença de cada uma viaja junto com ela. As skills são instaladas com `npx -y skills add <source> --skill <name> -g -y -a <claude-code|codex>` (mais `--copy` no Windows); a CLI com `npm install -g agent-browser` quando ela ainda não está no `PATH`, seguido de `agent-browser install`. Uma dependência que falha é um aviso, nunca um erro: o revisor passa a registrar a checagem que não pôde fazer como "not verified" em human validation.
+Instaladas a partir das fontes upstream — **nunca empacotadas** —, então a licença de cada uma viaja junto com ela. As skills são instaladas com `npx -y skills add <source> --skill <name> -g -y -a <claude-code|codex>` (mais `--copy` no Windows); a CLI com `npm install -g agent-browser` quando ela ainda não está no `PATH`, seguido de `agent-browser install`. Uma dependência que falha é um aviso, nunca um erro: sem o `ponytail-review` o revisor faz ele mesmo as mesmas seis perguntas e avisa; sem `agent-browser`, `impeccable` ou `revenue-centric-design` ele registra aquela checagem de UI como "not verified" em human validation.
 
 | Dependência | Fonte | Licença | Usada para |
 |---|---|---|---|
@@ -89,7 +89,7 @@ Instaladas a partir das fontes upstream — **nunca empacotadas** —, então a 
 
 ### Atualização
 
-Rode `/grimoire-update`. Ele compara a `VERSION` instalada com a mais recente no GitHub, mostra o delta do changelog e, com o seu ok, executa ele mesmo `sh ~/.grimoire/install.sh --ref v<latest>`; depois abra uma sessão nova. Rodar de novo a linha `curl … | sh` faz o mesmo. Um checkout de desenvolvimento é atualizado à mão: `git pull`, depois `./install.sh`.
+Rode `/grimoire-update`. Ele compara a `VERSION` instalada com a mais recente no GitHub, mostra o delta do changelog e, com o seu ok, executa ele mesmo `sh ~/.grimoire/install.sh --ref v<latest>` (ou o `install.sh` do seu `--home`); depois abra uma sessão nova. Rodar de novo a linha `curl … | sh` faz o mesmo. Um checkout de desenvolvimento é atualizado à mão: `git pull`, depois `./install.sh`.
 
 ### Desinstalação
 
@@ -98,7 +98,7 @@ sh ~/.grimoire/install.sh --uninstall            # remove as skills grimoire-* d
 sh ~/.grimoire/install.sh --uninstall --purge    # ...e apaga ~/.grimoire (config global incluída)
 ```
 
-`curl … | sh -s -- --uninstall [--purge]` também funciona. O `--purge` só apaga um home que o instalador clonou — nunca um checkout de desenvolvimento. As dependências ficam onde estão; o instalador imprime os comandos que as removem (`npx skills remove <name> -g`, `npm uninstall -g agent-browser`).
+Com um `--home` personalizado, rode o `install.sh` que está dentro dele. `curl … | sh -s -- --uninstall [--purge]` também funciona. O `--purge` só apaga um home que o instalador clonou — nunca um checkout de desenvolvimento. As dependências ficam onde estão; o instalador imprime os comandos que as removem (`npx skills remove <name> -g`, `npm uninstall -g agent-browser`).
 
 ## Migrando do 0.13
 
@@ -223,10 +223,13 @@ No GitHub, um construct é um milestone, references e pages são issues, planos 
 
 ```mermaid
 flowchart TD
-    C["/grimoire-construct ou /grimoire-adopt"] --> M["Milestone + uma issue por reference<br/>label grimoire:reference"]
+    C["/grimoire-construct ou /grimoire-adopt num milestone"] --> M["Milestone + uma issue por reference<br/>label grimoire:reference"]
     M --> S["/grimoire-spec (entrevista com você)<br/>ou /grimoire-run fase 1"]
     Q["/grimoire-spec com um pedido em texto livre"] --> I
+    A["/grimoire-adopt numa issue avulsa"] --> I
     S --> I["Corpo da issue = SPEC<br/>label grimoire:spec"]
+    I -.-> P["/grimoire-plan (opcional, interativo)"]
+    P -.-> X
     I --> X["/grimoire-execute ou /grimoire-run fase 2<br/>(comentário de plano, label grimoire:planned)"]
     X --> W["Worktree da page + branch grimoire/N-slug<br/>steps escritos com testes primeiro"]
     W --> D["PR draft"]
@@ -301,18 +304,18 @@ mode = "auto"                   # auto | on | off
 label_prefix = "grimoire"
 branch_prefix = "grimoire"
 
-# project file (.grimoire/config.toml):
-[verify]
-install_command = "pnpm install"
-dev_command = "pnpm dev --port {port}"     # {port} = a free port per page
-dev_url = "http://localhost:{port}"
-test_command = "pnpm test"
-build_command = "pnpm build"
-lint_command = "pnpm lint"
-
-[docs]
-dir = "docs"
-language = "en"
+# Project-level sections: grimoire-init writes them into each project's .grimoire/config.toml.
+# [verify]
+# install_command = "pnpm install"
+# dev_command = "pnpm dev --port {port}"     # {port} = port allocated per page
+# dev_url = "http://localhost:{port}"
+# test_command = "pnpm test"
+# build_command = "pnpm build"
+# lint_command = "pnpm lint"
+#
+# [docs]
+# dir = "docs"
+# language = "en"
 ```
 
 `[github].mode = "auto"` escolhe o backend GitHub quando o `origin` está no `github.com` e `gh auth status` dá certo; `on` exige o GitHub, `off` força o modo local. Com o placeholder `{port}` as pages são revisadas num navegador em paralelo; sem ele as revisões de UI são serializadas.
