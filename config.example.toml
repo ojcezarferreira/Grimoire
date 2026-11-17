@@ -1,0 +1,59 @@
+# Grimoire configuration (see GRIMOIRE-CONVENTIONS.md § Configuration).
+#
+# Precedence, merged key by key: built-in defaults (this file) < global
+# ~/.grimoire/config.toml < project .grimoire/config.toml. The installer copies
+# this file to the global config.toml once and never overwrites it.
+#
+# Each role takes { model, effort }. A role missing here falls back to `default`.
+#   Claude Code: model = fable | opus | sonnet | haiku
+#   Codex:       model = gpt-6-astra | gpt-6.1-sol | gpt-6.1-terra | gpt-6-luna (newer ids pass through)
+#   Both:        effort = low | medium | high | xhigh | max   (Codex: ultra -> max, with a warning)
+
+[agents.claude]
+session  = { model = "fable", effort = "max" }   # recommendation only: the skill warns when the session model differs
+default  = { model = "opus",  effort = "high" }
+research = { model = "fable", effort = "max" }
+plan     = { model = "fable", effort = "max" }
+execute  = { model = "opus",  effort = "high" }
+fix      = { model = "opus",  effort = "high" }
+review   = { model = "opus",  effort = "high" }
+quick    = { model = "opus",  effort = "high" }
+deps     = { model = "opus",  effort = "high" }
+
+[agents.codex]
+session  = { model = "gpt-6-astra", effort = "max" }
+default  = { model = "gpt-6.1-sol", effort = "max" }
+research = { model = "gpt-6-astra", effort = "max" }
+plan     = { model = "gpt-6-astra", effort = "max" }
+execute  = { model = "gpt-6.1-sol", effort = "max" }
+fix      = { model = "gpt-6.1-sol", effort = "max" }
+review   = { model = "gpt-6.1-sol", effort = "max" }
+quick    = { model = "gpt-6.1-sol", effort = "max" }
+deps     = { model = "gpt-6.1-sol", effort = "max" }
+
+[run]
+page_parallelism = 2            # 0 = unlimited (Codex also caps it via agents.max_concurrent_threads_per_session)
+step_timeout_minutes = 45
+review_timeout_minutes = 30
+
+[review]
+max_rounds = 3
+ui_globs = ["src/**/*.{tsx,jsx,vue,svelte,css,scss}", "app/**", "components/**", "pages/**"]
+
+[github]
+mode = "auto"                   # auto | on | off
+label_prefix = "grimoire"
+branch_prefix = "grimoire"
+
+# Project-level sections: grimoire-init writes them into each project's .grimoire/config.toml.
+# [verify]                        # discovered by grimoire-init; used by execute / review / agent-browser
+# install_command = "pnpm install"
+# dev_command = "pnpm dev --port {port}"     # {port} = port allocated per page; without the placeholder UI reviews are serialized
+# dev_url = "http://localhost:{port}"
+# test_command = "pnpm test"
+# build_command = "pnpm build"
+# lint_command = "pnpm lint"
+#
+# [docs]
+# dir = "docs"
+# language = "en"                 # grimoire-init asks once (or infers it from the README)

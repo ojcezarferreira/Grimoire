@@ -1,0 +1,10 @@
+# Grimoire third-party dependencies, installed by install.sh (skipped with --no-deps).
+# One dependency per line; blank lines and lines starting with # are ignored.
+# skill -> npx -y skills add <source> --skill <name> -g -y -a <claude-code|codex>
+# npm   -> command -v <name> || npm install -g <source>, then the post-step
+# type  source                                  name                     post-step
+skill   DietrichGebert/ponytail                 ponytail-review
+skill   heliocosta-dev/revenue-centric-design   revenue-centric-design
+skill   pbakaus/impeccable                      impeccable
+skill   vercel-labs/agent-browser               agent-browser
+npm     agent-browser                           agent-browser            agent-browser install
