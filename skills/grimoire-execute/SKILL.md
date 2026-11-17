@@ -80,7 +80,7 @@ Per `§ Review loop` (the reviewer; rounds, fixer, outcome): rounds `r = 1..[rev
 **[Teardown invariant]** — try/finally-shaped, non-negotiable
 Per `§ Parallel execution` (unconditional teardown) and `§ Review loop` (the page worktree). Whatever ends the execution — approval, `blocked`, a failed step, a hard-stop raised after Phase 3, an error, or an abort — the cleanup runs:
 - kill any dev server the reviewer started;
-- `git worktree remove --force` every step worktree and the page worktree this run created, then a defensive `rm -rf` of any residue under `.grimoire/bag/worktrees/`;
+- `git worktree remove --force` every step worktree and the page worktree this run created, then a defensive `rm -rf` of any residue under `.grimoire/bag/worktrees/`, then `git worktree prune`;
 - verify that `.grimoire/bag/worktrees/` is empty and `git worktree list` shows only the main workspace; report anything that could not be removed so the user can clear it by hand.
 
 The page branch **remains** (pushed when a remote exists). **This skill never deletes a branch and never closes a PR** (`§ Review loop`).
