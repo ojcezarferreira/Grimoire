@@ -50,7 +50,7 @@ PAUSE per `§ Pause-point pattern` (`grimoire-construct`: draft review). Edits �
 
 **[Phase 5: Persist]** — no commit (`§ Commits`)
 - **GitHub**, in this order:
-  1. Create the milestone — `gh api repos/{owner}/{repo}/milestones -f title=<name> -F description=@desc.md`, the description holding line 1 `<!-- grimoire:construct v=1 -->` and the intro — to obtain its number `M`.
+  1. Create the milestone — `gh api repos/{owner}/{repo}/milestones -f title="<name>" -F description=@desc.md`, the description holding line 1 `<!-- grimoire:construct v=1 -->` and the intro — to obtain its number `M`.
   2. Ensure the `grimoire:reference` label (label-ensure rule, `§ Backends`). Then, in list order, create one issue per reference: `gh issue create -t "<title>" -F body.md -l grimoire:reference -m "<milestone title>"`, the body's line 1 being `<!-- grimoire:page v=1 construct=#M order=<n> depends-on=<issue numbers> -->` (omit `depends-on` when empty), followed by the seed. Dependencies use the issue numbers created earlier in this loop.
   3. Complete the milestone description — marker line, intro / arc / findings, then `## References`: the numbered list `1. #<issue> — <one line>` in execution order, with the optional `(after #…)` suffix mirroring the dependencies (`gh api -X PATCH repos/{owner}/{repo}/milestones/<M> -F description=@desc.md`).
   4. Delete the draft.
