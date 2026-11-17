@@ -392,6 +392,12 @@ Closes #N
 - Labels: `gh label create <name> --color <hex> --description "<d>" --force` · block `gh issue edit <n> --add-label grimoire:blocked` · unblock `gh issue edit <n> --remove-label grimoire:blocked`
 - Run resume only (`§ Run`): `gh pr close <n>` · `git push origin --delete <branch>`
 
+**Adoption** (`grimoire-adopt` on a milestone). The milestone becomes a construct in place:
+- Issues that already carry the page marker keep their state and label, and are listed in `## References` in the order fixed during the interview.
+- Closed issues are excluded from the list unless the user asks to include them.
+- The original milestone description is preserved verbatim inside `<details><summary>Original milestone description</summary>…</details>`, placed after the Grimoire intro.
+- Issues adopted as references get the page marker (`construct=#M order=N`, optional `depends-on`) and the `grimoire:reference` label, and keep their original text inside `<details><summary>Original issue text</summary>…</details>` below the seed.
+
 **Local cache (GitHub mode).** `.grimoire/pages/<issue>-<slug>/K-<step>.md` is a git-ignored cache of the plan comment, written by `grimoire-plan` / the auto-planner together with the comment: `grimoire-execute` re-materializes the step files from the latest plan comment when they are absent (switching machines), and the plan comment always wins over a stale cache. The SPEC is **not** cached — it is read from the issue every time.
 
 ---
@@ -576,6 +582,8 @@ The frontmatter `status` fields of `references/*` are the **record**; the checkl
 
 **Size-evaluation trigger & handoff-brief contract.** When `grimoire-spec` (new-page mode) judges a free-text request **too large for a single page**, it recommends creating a construct. On user approval it writes a **handoff brief** — the best possible prompt to feed `grimoire-construct` — to `.grimoire/bag/drafts/construct-brief-<epoch>.md` (epoch = Unix seconds at write time) and **STOPS without creating a page**, instructing the user to start a fresh, clean-context session and run `/grimoire-construct` with that brief. The brief **persists** (it is consumed by a different, clean-context session) — `grimoire-spec` never auto-deletes it; `grimoire-construct` deletes it after successfully creating the construct. On decline, `grimoire-spec` proceeds as a normal large page.
 
+`grimoire-adopt` applies the same contract to an issue judged too large for one page: it recommends a construct and PAUSES; on approval it writes `.grimoire/bag/drafts/construct-brief-<epoch>.md`, seeded with the issue text and the interview's findings, and STOPS leaving the issue untouched, telling the user to run `/grimoire-construct` with the brief in a fresh session; on decline it continues adopting the issue as one page. `grimoire-construct` deletes the brief after use, as above.
+
 ---
 
 ## § Review loop
@@ -667,9 +675,9 @@ human-validation:
 
 This section is the **single source of truth** for `grimoire-run <construct>` — executing a whole construct end to end. SKILL.md bodies reference it; they never restate these rules.
 
-**Hard-stops.** Construct not found; nothing to run — no pending reference and no runnable page: every page is in `review`, closed, or `blocked` (`blocked` pages are not runnable here; the message names them). Messages in `§ Pause-point pattern`.
+**Hard-stops.** Construct not found; nothing to run — no pending reference and no runnable page: every page is in `review`, closed, or `blocked` (`blocked` pages are not runnable here; the message names them); page-DAG validation before the boundary — a cycle between pages, or a `depends-on` pointing at a page that does not exist. Messages in `§ Pause-point pattern`.
 
-**Phase 1 — interactive (spec interviews).** For every pending reference in list order, invoke `grimoire-spec` in consumption mode (Grimoire-on-Grimoire — `§ Skill composition`; its hard-stops and pauses hold). The user may answer "skip the rest" at any interview: the remaining references stay `reference` and — together with their transitive dependents — are left out of Phase 2. When no reference is pending, Phase 1 is empty and the run goes straight to the boundary line.
+**Phase 1 — interactive (spec interviews).** For every pending reference in list order, invoke `grimoire-spec` in consumption mode (Grimoire-on-Grimoire — `§ Skill composition`; its hard-stops and pauses hold). The user may answer "skip the rest" at any interview: the remaining references stay `reference` and — together with their transitive dependents — are left out of Phase 2. **Abandoning a consumption draft counts as "skip the rest"**: that reference stays `reference`, it and its transitive dependents are excluded from Phase 2, and the run proceeds to the boundary with the pages already specced. When no reference is pending, Phase 1 is empty and the run goes straight to the boundary line.
 
 **The boundary.** `🚀 Autonomous phase: N pages, K waves — you can leave.` — `N` = the pages that will run, `K` = the waves. **No question is asked after this line.**
 
@@ -681,19 +689,19 @@ This section is the **single source of truth** for `grimoire-run <construct>` �
 - **Blocked propagation.** Every `blocked` outcome — rounds exhausted, step failure, watchdog — marks the page's transitive dependents `skipped`; independent pages continue.
 - **UI reviews** are serialized across pages when `[verify]` has no `{port}` placeholder — a mutex recorded in the ledger.
 
-**Ledger** — `.grimoire/bag/runs/<construct>-<epoch>.md`, rewritten at every transition:
+**Ledger** — `.grimoire/bag/runs/<construct>-<epoch>.md`, rewritten at every transition. `<construct>` is the milestone number on GitHub and `NNN` locally; `<epoch>` is Unix seconds at creation; the file stem `<construct>-<epoch>` is the **run id**.
 - frontmatter: `construct`, `backend`, `started`, the model / effort snapshot per role, `max_rounds`;
 - a table `page | wave | phase | branch | base | pr | updated | note`, with `phase ∈ pending | planning | executing k/n | reviewing r/R | review | blocked | skipped`.
 
-**Resume.** Re-invoking `grimoire-run` for a construct that has an unfinished ledger announces `▶ Resuming run <id>` and continues from the ledger:
+**Resume.** Re-invoking `grimoire-run` for a construct that has an unfinished ledger announces `▶ Resuming run <id>` (`<id>` = the ledger's run id) and continues from the ledger. A resumed run **never re-runs Phase 1** — no re-interview — and its page set is exactly the ledger's:
 - `review`, `blocked`, `skipped` → untouched (a `blocked` page is resumed individually by the human through `/grimoire-execute N` after answering);
 - `planning` → planning restarts;
-- `executing` → the previous attempt died in the middle of the steps. The branch is Grimoire's own — proven by the ledger, never marked ready — so the run closes the draft PR if one exists, **deletes the branch** — locally and, when a remote exists, remotely (`git push origin --delete <branch>`) — and re-executes the page from scratch on a new branch that reuses the deterministic name `grimoire/<N>-<slug>`. This is the **only** destructive git operation in the whole design; it exists here and never in `grimoire-execute`;
+- `executing` → the previous attempt died in the middle of the steps. The branch is Grimoire's own — proven by the ledger, never marked ready — so the run first tears down that page's leftover worktrees (`page-<N>/`, `page-<N>-step-*`) per the per-page teardown invariant of `§ Review loop`, then closes the draft PR if one exists, **deletes the branch** — locally and, when a remote exists, remotely (`git push origin --delete <branch>`) — and re-executes the page from scratch on a new branch that reuses the deterministic name `grimoire/<N>-<slug>`. This is the **only** destructive git operation in the whole design; it exists here and never in `grimoire-execute`;
 - `reviewing` → the review cycle restarts at round 1 on the existing branch (resume mode of `§ Review loop`).
 
 A finished ledger (every page terminal) is never resumed; a new invocation starts a new ledger for whatever is still pending.
 
-**Watchdog.** `[run].step_timeout_minutes` (default 45) per step sub-agent; `[run].review_timeout_minutes` (default 30) per review / fix sub-agent. Timeout or crash → **one** retry with a fresh sub-agent fed with the failure context; a second failure → the page becomes `blocked` (label + `⛔` comment on the PR when one exists, otherwise on the issue), its transitive dependents become `skipped`, and independent pages continue. Enforcement is best-effort per harness (`§ Harness adaptation`).
+**Watchdog.** `[run].step_timeout_minutes` (default 45) per step sub-agent and per `plan` (auto-plan) sub-agent; `[run].review_timeout_minutes` (default 30) per review / fix sub-agent. Timeout or crash → **one** retry with a fresh sub-agent fed with the failure context; a second failure → the page becomes `blocked` (label + `⛔` comment on the PR when one exists, otherwise on the issue), its transitive dependents become `skipped`, and independent pages continue. Enforcement is best-effort per harness (`§ Harness adaptation`).
 
 **Stop.** The run stops when every page is in `review`, `blocked`, or `skipped`. Each page tears down its own worktrees when its execution ends (`§ Review loop`); when the run stops, `.grimoire/bag/worktrees/` is empty and `git worktree list` shows only the main workspace — the same try/finally invariant as `§ Parallel execution`, at run level. Final summary: a table `page / PR / state / merge order / pointer to Human validation`.
 
@@ -798,7 +806,8 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
 
 **`grimoire-run`**
 - **Hard-stops:** the construct does not exist → `❌ Construct N does not exist.`; nothing to run (no pending reference and no runnable page — every page in `review`, closed, or `blocked`) → `❌ Construct N has nothing to run.`, followed by the list of `blocked` pages, if any, each with the hint to resume it with `/grimoire-execute M`.
-- **Phase 1 pauses:** one `grimoire-spec` consumption interview per pending reference, in list order — its clarifying questions, draft review, and hard-stops apply unchanged. At any interview the user may answer "skip the rest": the remaining references and their transitive dependents are left out of Phase 2.
+- **Page-DAG hard-stops** (before the boundary): a cycle between pages → `❌ Construct N has cyclic dependencies between pages. Fix them with /grimoire-construct-update first.`; a `depends-on` pointing at a non-existent page → `❌ Construct N references a non-existent page in depends-on. Fix it with /grimoire-construct-update first.`
+- **Phase 1 pauses:** one `grimoire-spec` consumption interview per pending reference, in list order — its clarifying questions, draft review, and hard-stops apply unchanged. At any interview the user may answer "skip the rest": the remaining references and their transitive dependents are left out of Phase 2. Abandoning a consumption draft counts as "skip the rest" (`§ Run`).
 - **Boundary announcement (not a pause):** `🚀 Autonomous phase: N pages, K waves — you can leave.` Nothing is asked after this line; every page ends in `review`, `blocked`, or `skipped` (`§ Run`).
 - **Resume announcement (not a pause):** `▶ Resuming run <id>` when an unfinished ledger exists.
 
@@ -806,6 +815,7 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
 - **Backend hard-stop:** local backend → `❌ grimoire-adopt requires the GitHub backend.`
 - **Target hard-stops:** the object does not exist → `❌ Issue N does not exist.` / `❌ Milestone N does not exist.`; the object is closed → `❌ Issue N is closed.` / `❌ Milestone N is closed.`; the object is already managed by Grimoire (marker or label present) → `❌ Issue N is already managed by Grimoire (grimoire:spec).` — the parenthesis names the status label found — / `❌ Milestone N is already managed by Grimoire.`
 - **Clarifications and improvements:** after the research sub-agent has analyzed the code against the request, interview the developer — sharpen scope and acceptance criteria, flag "too large → milestone" — and PAUSE for the answers.
+- **Size-evaluation pause (issue only):** when the issue is judged too large for one page, recommend a construct and PAUSE — mirroring `grimoire-spec`'s size-evaluation pause. On approval, write the handoff brief per `§ Construct` and STOP, leaving the issue untouched; on decline, continue adopting it as one page.
 - **Draft review:** present `.grimoire/bag/drafts/adopt-<epoch>.md` per `§ IDE-aware review` and PAUSE for confirmation or edits before writing the issue body / milestone description.
 
 **`grimoire-quick`**
