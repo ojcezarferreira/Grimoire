@@ -167,18 +167,132 @@ check "remote: $EXPECTED skills under .agents/skills" has_all_skills "$T/.agents
 check "remote: no $TOKEN left in installed *.md" no_token_left "$T/.claude/skills" "$T/.agents/skills"
 check_path "remote: skills point at the clone" "$T/.grimoire/skills" "$T/.claude/skills" "$T/.grimoire"
 check "remote: global config.toml created in the clone" test -f "$T/.grimoire/config.toml"
+check "remote: fresh clone re-executes the cloned installer once" \
+	test "$(grep -c "^re-executing installer from " "$LOG")" -eq 1
 
 first=$(contents "$T/.claude")
 with_home "$T" sh "$T/.grimoire/install.sh" --no-deps --ref "$ref"
 check "remote: the clone's own install.sh updates in place (exit 0)" test $? -eq 0
 check "remote: ...in remote mode, not dev mode" grep -q "^Updating " "$LOG"
 check "remote: update run is idempotent" test "$(contents "$T/.claude")" = "$first"
+check "remote: unchanged ref does not re-execute" \
+	test "$(grep -c "^re-executing installer from " "$LOG")" -eq 0
+
+# a throwaway branch one commit ahead, local to the sandbox clone
+git -C "$T/.grimoire" checkout -q -b sandbox-next &&
+	git -C "$T/.grimoire" -c user.name=test -c user.email=test@example.invalid \
+		commit -q --allow-empty -m "sandbox: next release" &&
+	git -C "$T/.grimoire" checkout -q "$ref"
+with_home "$T" sh "$T/.grimoire/install.sh" --no-deps --ref sandbox-next
+check "remote: update to another ref exits 0" test $? -eq 0
+check "remote: changed ref re-executes the new installer exactly once" \
+	test "$(grep -c "^re-executing installer from " "$LOG")" -eq 1
+check "remote: clone now at the new ref" \
+	test "$(git -C "$T/.grimoire" rev-parse HEAD)" = "$(git -C "$T/.grimoire" rev-parse sandbox-next)"
 
 with_home "$T" env GRIMOIRE_REPO="$REPO" sh -s -- --uninstall --purge <install.sh
 check "remote --uninstall --purge exits 0" test $? -eq 0
 check "remote --uninstall empties both skill dirs" \
 	test "$(count_skills "$T/.claude/skills")" -eq 0 -a "$(count_skills "$T/.agents/skills")" -eq 0
 check "remote --purge deletes the home" test ! -e "$T/.grimoire"
+
+# --- --purge only deletes a managed clone ------------------------------------
+# (a throwaway clone stands in for a dev checkout: the real one is never at risk)
+git clone -q "$REPO" "$ROOT/dev checkout"
+mkdir -p "$ROOT/plain dir" && printf 'keep me\n' >"$ROOT/plain dir/file.txt"
+T=$(new_home purge)
+for target in "$ROOT/dev checkout" "$ROOT/plain dir"; do
+	with_home "$T" sh -s -- --uninstall --purge --home "$target" <install.sh
+	check "--purge --home <$(basename "$target")> exits 0" test $? -eq 0
+	check "--purge --home <$(basename "$target")> leaves it in place" \
+		test -e "$target/.git" -o -f "$target/file.txt"
+	check "--purge --home <$(basename "$target")> says why" \
+		grep -q "not an installer-managed clone; not deleting" "$LOG"
+done
+
+# --- remote mode refuses a git checkout it did not clone ---------------------
+USERREPO="$ROOT/user repo"
+git init -q "$USERREPO" &&
+	printf 'mine\n' >"$USERREPO/notes.txt" &&
+	git -C "$USERREPO" -c core.autocrlf=false add notes.txt &&
+	git -C "$USERREPO" -c user.name=test -c user.email=test@example.invalid commit -q -m mine
+head_before=$(git -C "$USERREPO" rev-parse HEAD)
+T=$(new_home foreign)
+with_home "$T" env GRIMOIRE_REPO="$REPO" sh -s -- --no-deps --ref "$ref" --home "$USERREPO" <install.sh
+check "remote --home <unmanaged git repo> fails" test $? -ne 0
+check "...with the not-managed message" grep -q "is a git checkout not managed by the installer" "$LOG"
+check "...leaving its HEAD untouched" test "$(git -C "$USERREPO" rev-parse HEAD)" = "$head_before"
+check "...and unmarked" test -z "$(git -C "$USERREPO" config --local --get grimoire.managed)"
+check "...and installs nothing" test ! -e "$T/.claude/skills"
+
+# --- a managed clone at a custom home updates itself, not ~/.grimoire -------
+T=$(new_home custom)
+with_home "$T" env GRIMOIRE_REPO="$REPO" sh -s -- --no-deps --ref "$ref" --home "$T/custom" <install.sh
+check "remote --home <custom> exits 0" test $? -eq 0
+with_home "$T" sh "$T/custom/install.sh" --no-deps --ref "$ref"
+check "custom clone's own install.sh exits 0" test $? -eq 0
+check "...and does not create ~/.grimoire" test ! -e "$T/.grimoire"
+check "...and keeps the custom clone as the home" grep -q "^home: .*/custom (clone at " "$LOG"
+check_path "custom: skills point at the custom clone" "$T/custom/skills" "$T/.claude/skills" "$T/custom"
+
+# --- deps: stub node/npx/npm/agent-browser log argv and drain stdin --------
+STUB="$ROOT/stub bin"
+LATER="$ROOT/stub later"
+STUBLOG="$ROOT/stub.log"
+mkdir -p "$STUB" "$LATER"
+write_stub() { # <dir> <name> [extra shell line]
+	cat >"$1/$2" <<EOF
+#!/bin/sh
+printf '%s\n' "$2 \$*" >>"$STUBLOG"
+cat >>"$STUBLOG.stdin"
+${3:-}
+EOF
+	chmod +x "$1/$2"
+}
+write_stub "$STUB" node
+write_stub "$STUB" npx
+write_stub "$LATER" agent-browser
+# npm "installs" agent-browser by putting its stub on PATH
+write_stub "$STUB" npm "[ \"\$*\" = 'install -g agent-browser' ] && cp \"$LATER/agent-browser\" \"$STUB/\""
+: >"$STUBLOG"
+: >"$STUBLOG.stdin"
+GITDIR=$(dirname "$(command -v git)")
+T=$(new_home deps)
+with_home "$T" env PATH="$STUB:$GITDIR:/usr/bin:/bin" sh ./install.sh
+check "install with deps (stubbed) exits 0" test $? -eq 0
+expected=""
+copy=""
+[ "$windows" -eq 1 ] && copy=" --copy"
+lines=0
+while read -r type source name post; do
+	case $type in '' | '#'*) continue ;; esac
+	lines=$((lines + 1))
+	case $type in
+	skill)
+		expected+="npx -y skills add $source --skill $name -g -y -a claude-code$copy"$'\n'
+		expected+="npx -y skills add $source --skill $name -g -y -a codex$copy"$'\n'
+		;;
+	npm)
+		expected+="npm install -g $source"$'\n'
+		[ -n "$post" ] && expected+="$post"$'\n'
+		;;
+	esac
+done <deps.txt
+check "deps: exact dependency commands, in deps.txt order" test "$(cat "$STUBLOG")"$'\n' = "$expected"
+check "deps: no dependency command saw deps.txt on stdin" test ! -s "$STUBLOG.stdin"
+skill_lines=$(grep -c '^skill ' deps.txt)
+check "deps: all $lines deps.txt lines processed (summary ✓ count)" \
+	test "$(grep -c '^  ✓ ' "$LOG")" -eq $((skill_lines * 2 + lines - skill_lines))
+
+# --- warning when the 0.13 plugin is still installed -----------------------
+T=$(new_home plugin)
+mkdir -p "$T/.claude/plugins"
+printf '{"version":2,"plugins":{"grimoire@grimoire":[{"scope":"user"}]}}\n' \
+	>"$T/.claude/plugins/installed_plugins.json"
+with_home "$T" sh ./install.sh --no-deps --agent claude
+check "plugin fixture: install exits 0" test $? -eq 0
+check "plugin fixture: warns to run claude plugin uninstall grimoire@grimoire" \
+	grep -q "warning: .*claude plugin uninstall grimoire@grimoire" "$LOG"
 
 # --- install.ps1 ---------------------------------------------------------------
 if command -v powershell >/dev/null 2>&1 && command -v cygpath >/dev/null 2>&1; then
