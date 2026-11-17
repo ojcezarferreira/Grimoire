@@ -61,6 +61,8 @@ Update the Grimoire installation on this machine — the home `${GRIMOIRE_HOME}`
   sh "${GRIMOIRE_HOME}/install.sh" --ref vA.B.C
   ```
 
+  **Windows without `sh` on the `PATH`** (a Codex or PowerShell shell): run `powershell -NoProfile -ExecutionPolicy Bypass -File "${GRIMOIRE_HOME}/install.ps1" -- --ref vA.B.C` instead — it runs the home's `install.sh` through Git for Windows' `bash.exe` — or call Git's own shell directly, `"<git root>\bin\sh.exe" "${GRIMOIRE_HOME}/install.sh" --ref vA.B.C` (`<git root>` = the Git for Windows install folder above `git.exe`).
+
   `A.B.C` is the latest version from Phase 3. The installer fetches and checks out that tag in the home, re-executes its freshly checked-out self, re-copies every `grimoire-*` skill for the detected agents, refreshes the dependencies, and keeps the global `config.toml`.
 - Show the installer's closing summary to the user verbatim (version, home, agents, skills, deps, config, any `action:` line).
 - If it exits non-zero, show its error output, tell the user the update did not complete and that re-running `/grimoire-update` (or the `curl … | sh` one-liner) retries it, then go to Phase 8 for the cleanup only and stop.
@@ -71,5 +73,5 @@ Update the Grimoire installation on this machine — the home `${GRIMOIRE_HOME}`
 
 **[Notes]**
 - This skill never spawns sub-agents and never makes commits in the consumer project. Every write to `${GRIMOIRE_HOME}` and to the installed skill directories belongs to `install.sh`; the skill only runs it.
-- On Codex, the fetches and the installer need network access and write outside the workspace, so the user may be asked to approve a sandbox escalation.
+- On Codex, the fetches and the installer need network access and write outside the workspace: per the sandbox / network row of `§ Harness adaptation`, the default `workspace-write` sandbox blocks both, so the user is asked to approve an escalation unless Codex runs with network access and a sandbox that allows those writes (or `-s danger-full-access`).
 - Operator-facing prose follows `§ User-facing language`; commands, paths, and version strings stay verbatim.
