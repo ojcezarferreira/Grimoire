@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] — 2026-11-17
+
+### Added
+- New `grimoire-run` skill: runs a whole construct end to end. Phase 1 runs one `grimoire-spec` consumption interview per pending reference (the user may "skip the rest"); after the `🚀 Autonomous phase: N pages, K waves — you can leave.` boundary, Phase 2 asks nothing and takes every page through plan → execute → review → PR in Kahn waves over the page `depends-on` graph (an implicit chain when no page declares one), up to `[run].page_parallelism` pages at a time, with stacked PRs, blocked-propagation to dependents, a best-effort watchdog with one retry, and a resumable ledger under `.grimoire/bag/runs/`. New `GRIMOIRE-CONVENTIONS.md` `§ Run`.
+- New `grimoire-adopt` skill (GitHub only): brings an existing issue (→ page) or milestone (→ construct, its issues → references, gaps → new reference issues) under Grimoire after a research sub-agent, an interview, and a draft review, preserving the original texts in `<details>` blocks and never closing a human's issue.
+- **GitHub backend** (`§ Backends`): pages are issues (the SPEC is the issue body, the issue number is the page number), constructs are milestones with a numbered `## References` list, every reference is an issue created at once, plans and review verdicts are comments, and each page ships as one pull request. Objects carry HTML markers (`<!-- grimoire:page v=1 … -->`, `<!-- grimoire:construct v=1 -->`, `<!-- grimoire:plan v=1 -->`, `<!-- grimoire:verdict round=N -->`); status lives in labels (`grimoire:reference`, `grimoire:spec`, `grimoire:planned`, `grimoire:review`, side labels `grimoire:blocked`, `grimoire:dropped`). The backend is detected once per run (`[github].mode = auto | on | off`, `origin` on `github.com`, `gh auth status`) and announced; without GitHub the **local backend** keeps the same objects as git-ignored files with `status:` frontmatter.
+- **Review loop** (`§ Review loop`): `grimoire-execute` opens a draft PR after the first step commit and drives up to `[review].max_rounds` rounds of a reviewer sub-agent — scope against the acceptance criteria, `ponytail-review`, the full `test_command` / `build_command` / `lint_command` gate (a documented `§ TDD` exception), and, for files matching `[review].ui_globs`, a fresh dev server checked with `agent-browser`, `impeccable`, and `revenue-centric-design` plus design-system conformance — and a fixer sub-agent on `changes-requested`. Approval fills `## Summary` and `## Human validation`, runs `gh pr ready`, and labels the page `grimoire:review`; exhausted rounds leave the PR draft with `grimoire:blocked` and a `⛔` comment naming the way back. Re-running on an existing branch resumes with the new human comments.
+- **Page worktrees and stacked PRs:** every page executes on its own branch `grimoire/<N>-<slug>` in `.grimoire/bag/worktrees/page-<N>/` — the user's working tree never changes branch — and a page whose dependency is not merged yet is branched from that dependency (stacked PR). Unconditional worktree teardown at the end of every execution.
+- **Configuration** (`§ Configuration`): a global `~/.grimoire/config.toml` and a committed project `.grimoire/config.toml`, merged key by key over built-in defaults; per-harness model + effort for the roles `session`, `default`, `research`, `plan`, `execute`, `fix`, `review`, `quick`, `deps`; `[run]`, `[review]`, `[github]`, `[verify]` (with the per-page `{port}` placeholder), and `[docs]`. Shipped as `config.example.toml`.
+- **Codex support** (`§ Harness adaptation`): one table maps every operation — spawning a role, waiting, asking the user, invoking a sibling skill, fetching a URL, model and effort values — to Claude Code and to Codex; skills are installed for both.
+- **Installer:** `install.sh` (POSIX sh; `curl … | sh` or `./install.sh` from a checkout in dev mode; flags `--ref`, `--agent`, `--no-deps`, `--dry-run`, `--uninstall [--purge]`, `--home`) clones the Grimoire home to `~/.grimoire`, copies the skills to `~/.claude/skills/` and `~/.agents/skills/` substituting the `${GRIMOIRE_HOME}` token, installs the dependencies of `deps.txt` from upstream (`agent-browser` CLI + skill, `ponytail-review`, `impeccable`, `revenue-centric-design`), and creates the global config. `install.ps1` runs it on Windows through Git Bash; `VERSION` holds the release number; `scripts/test-install.sh` tests the installer in a sandboxed `HOME`.
+- **0.13 migration:** `grimoire-init` detects 0.13 state tracked by git and, on explicit consent, stamps `status:` frontmatter on legacy pages and constructs, untracks the now-ignored folders, deletes `HISTORIC.md` and `bag/historic/`, and commits `chore(grimoire): migrate to 0.14 layout`.
+- This repository's own `docs/` (overview, architecture, conventions, development) and `.grimoire/config.toml`.
+
+### Changed
+- **Documentation split** (`§ Documentation`): project context now lives in neutral, human-owned `docs/` files (`overview.md`, `architecture.md`, `conventions.md`, `development.md`), and `.grimoire/PROJECT.md` becomes an index of those files plus `## Grimoire rules`. `grimoire-init` writes only the missing canonical docs, the index, `config.toml`, and the `.gitignore` block, and ensures the GitHub labels; `grimoire-note` routes each rule to `docs/conventions.md` or `## Grimoire rules`.
+- `grimoire-execute` is now autonomous: it auto-plans a page still in `spec` (no interview — open choices become `## Assumptions`), executes in the page worktree, and ends with a PR awaiting human review (`review`) or `blocked`; it asks no questions. `grimoire-plan` remains as the optional interactive planner and writes a plan comment on GitHub.
+- `grimoire-spec`, `grimoire-construct`, and `grimoire-construct-update` write GitHub issues and milestones (or git-ignored local files); construct references may declare `depends-on`, which `grimoire-run` uses as the page graph.
+- `grimoire-update` reads `${GRIMOIRE_HOME}/VERSION`, compares it with `main/VERSION`, shows the changelog delta, and on approval runs the installer itself (`install.sh --ref v<latest>`).
+- The orchestrator never implements: every analysis, plan, step, review, and fix runs in a sub-agent whose model and effort come from its role (`§ Sub-agent spawning`).
+- `README.md`, `README.pt-BR.md`, and `CLAUDE.md` rewritten for 0.14.
+
+### Removed
+- `.grimoire/HISTORIC.md`, its rotation into `.grimoire/bag/historic/`, and the `[spec]` / `[planned]` / `[finished]` status tokens — status lives in labels or frontmatter.
+- State commits: specifying, planning, reviewing, or finishing a page and creating or altering a construct no longer commit anything; only `.grimoire/PROJECT.md` and `.grimoire/config.toml` are ever committed under `.grimoire/`.
+- The `.claude-plugin/` manifests (`plugin.json`, `marketplace.json`) and the Claude Code marketplace distribution channel — Grimoire is installed with `install.sh` / `install.ps1`.
+- The `${CLAUDE_PLUGIN_ROOT}` token, replaced by `${GRIMOIRE_HOME}`.
+- This repository's committed page folders and historic (they remain in the git history).
+
 ## [0.13.0] — 2026-06-16
 
 ### Added
@@ -122,6 +151,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `grimoire-init` and `grimoire-quick` aligned with the Spec → Plan → Execute pipeline.
 - README and CLAUDE.md updated for the new pipeline.
 
+[0.14.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.14.0
+[0.13.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.13.0
+[0.12.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.12.0
+[0.11.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.11.0
 [0.10.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.10.0
 [0.9.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.9.0
 [0.8.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.8.0
