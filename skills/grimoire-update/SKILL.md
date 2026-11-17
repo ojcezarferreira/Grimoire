@@ -1,74 +1,69 @@
 ---
 name: grimoire-update
-description: Update the Grimoire plugin to its latest version — detects installed version, fetches the latest from GitHub, shows the changelog, and guides the user through /plugin marketplace update + /reload-plugins.
+description: Update the Grimoire installation to its latest version — reads the installed VERSION, fetches the latest VERSION and CHANGELOG from GitHub, shows the changelog delta, and on your ok runs the Grimoire installer to fetch, check out, and re-copy the skills (a development checkout gets git pull + ./install.sh advice instead).
 argument-hint: (no arguments)
 ---
 
-**[Required Reading]**
-1. Read `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`. This is the source of truth for the **installed** Grimoire version on this machine.
-2. Read `${CLAUDE_PLUGIN_ROOT}/GRIMOIRE-CONVENTIONS.md` and load `§ Skill composition`, `§ IDE-aware review` and `§ User-facing language` — Phase 4 below depends on it to decide how the changelog is shown to the user. Other sections of the conventions do not apply to this skill.
-3. If `.grimoire/PROJECT.md` exists in the project root, read it for project context only (tone, audience). Missing → proceed without it; do not suggest `grimoire-init` here — this skill is plugin maintenance, not project bootstrapping.
+**[Required Reading]** — in the order of `§ Documentation`:
+1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Harness adaptation` (install location, `${GRIMOIRE_HOME}`), `§ IDE-aware review` (the changelog draft), `§ User-facing language`, `§ Pause-point pattern` (`grimoire-update`: changelog review), `§ Skill composition`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Sub-agent spawning` (this skill spawns nothing), `§ Commits` (this skill commits **nothing**), `§ Backends`, `§ .grimoire/ layout` (pages), `§ Construct`, `§ Parallel execution`, `§ Review loop`, `§ Run`.
+2. `.grimoire/PROJECT.md` and `docs/` are not read — this skill maintains the Grimoire installation, not the project; it never suggests `grimoire-init`.
+3. Read `.grimoire/config.toml` and `${GRIMOIRE_HOME}/config.toml` per `§ Configuration` only for the one-line `session` notice.
+4. Backend detection (`§ Backends`) is skipped — this skill never reads or writes pages or constructs.
 
 **[Objective]**
-Update the Grimoire plugin installed in this Claude Code session to the latest published version. The skill does NOT modify any file inside the plugin install directory (`~/.claude/plugins/`) — Claude Code owns that. It reads the installed version, compares it to the latest on GitHub, shows the user what changed, and guides them through the two official commands required to apply the update. The skill makes no commits in the consumer project; the only file it may write is the ephemeral changelog draft at `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` when running in IDE mode, which is removed before the skill ends.
+Update the Grimoire installation on this machine — the home `${GRIMOIRE_HOME}` and the skill copies of `§ Harness adaptation` — to the latest published version. The skill reads the installed version, compares it to the latest on GitHub, shows what changed, and, once authorized, **runs the Grimoire installer itself**; the installer owns every write to the home and to the skill directories. The flow is the same on Claude Code and Codex. The only file the skill may write in the current project is the ephemeral changelog draft `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` (IDE mode), removed before the skill ends.
 
 **[Phase 1: Read installed version]**
-- Open `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and extract the `version` field.
+- Read `${GRIMOIRE_HOME}/VERSION` (one line, whitespace trimmed).
 - Report to the user: `Installed Grimoire version: X.Y.Z`.
-- If the file is missing or malformed, stop and tell the user the installed plugin manifest is unreadable — they should reinstall Grimoire via `/plugin install grimoire@grimoire`. Do not proceed.
+- If the file is missing or empty, stop and tell the user the installation is unreadable — they should reinstall Grimoire with `curl -fsSL https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/install.sh | sh`. Do not proceed.
 
-**[Phase 2: Fetch latest version]**
-- `WebFetch` `https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/.claude-plugin/plugin.json`.
-- Extract the `version` field from the response.
-- If the request fails (network, repo moved, 404), stop and tell the user the latest version could not be determined and ask them to retry later. Do **not** assume the plugin is up to date and do **not** suggest the update commands.
+**[Phase 2: Detect the install kind]**
+- Run `git -C "${GRIMOIRE_HOME}" config --get grimoire.managed` through the shell.
+  - Prints `true` → a **managed clone** made by the installer: Phase 7 runs the installer.
+  - Anything else (no output, an error, no `.git`) → a **development checkout** — the installer's dev mode: Phase 5 prints the dev-mode notice instead.
 
-**[Phase 3: Compare versions]**
-- Compare the installed `version` (Phase 1) to the latest `version` (Phase 2) as strings.
-- **If equal:** print `Grimoire is already up to date (X.Y.Z). Nothing to do.` and end the skill. Do **not** print any commands.
-- **If different:** continue to Phase 4.
+**[Phase 3: Fetch latest version]**
+- `WebFetch` `https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/VERSION` (on a harness without a web-fetch tool: `curl -fsSL <url>` through the shell) and trim it.
+- If the request fails (network, repo moved, 404), stop and tell the user the latest version could not be determined and ask them to retry later. Do **not** assume Grimoire is up to date and do **not** run the installer.
 
-**[Phase 4: Show changelog]**
-- `WebFetch` `https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/CHANGELOG.md`.
-- Extract every `## [VERSION] — DATE` section strictly between the installed version (exclusive) and the latest version (inclusive). For each, include the `### Added` / `### Changed` / `### Fixed` / `### Removed` bullets verbatim.
-- If the installed version is older than every section in the file, include all sections.
-- Present the extracted slice for review per `§ IDE-aware review`:
-  - **IDE detected:** create `.grimoire/bag/drafts/` if it does not exist, then write the changelog to `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` so the IDE renders it. Generate `<epoch>` with `date +%s` at the moment of writing and memorize the full path — it will be reused in Phase 5 (on rejection) and Phase 8 (on completion). Tell the user in one short line that the changelog is open in the editor.
-  - **Terminal-only fallback:** print the extracted slice to the user inline in markdown — concise, no commentary on top.
-- If the changelog cannot be fetched, print a one-line warning (`Changelog not available — proceeding without it.`) and continue. Do not abort.
+**[Phase 4: Compare versions]**
+- Compare the installed version (Phase 1) to the latest (Phase 3) as strings.
+- **If equal:** print `Grimoire is already up to date (X.Y.Z). Nothing to do.` and end the skill — no pause.
+- **If different:** continue.
 
-**[Phase 5: Pause — authorization]**
-- Ask the user: `Proceed with the update from X.Y.Z to A.B.C? (yes/no)`.
-- Wait for an explicit answer. Anything other than an unambiguous yes ends the skill cordially with no further output. If Phase 4 wrote the memorized `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` (IDE mode), delete that exact path before ending. This is the only chance the user has to cancel before the guidance phases begin.
+**[Phase 5: Development checkout]** — only when Phase 2 found a development checkout
+- Print the notice and STOP — nothing is run, nothing is paused:
 
-**[Phase 6: Guide marketplace update]**
-- Print the following block verbatim:
-
-  > Run this command in Claude Code to pull the new version into your installed plugin:
+  > `${GRIMOIRE_HOME}` is a development checkout (installed X.Y.Z, latest A.B.C). Update it yourself: run `git pull` in that checkout, then `./install.sh` from it.
   >
-  > ```
-  > /plugin marketplace update grimoire
-  > ```
-  >
-  > This updates the installed plugin in place — no uninstall/reinstall needed.
+  > Changelog: https://github.com/ojCezarFerreira/grimoire/blob/main/CHANGELOG.md
 
-- Pause and wait for the user to confirm they ran it (`done`, `ok`, or similar). If they report an error, surface it and stop — do not advance to Phase 7.
+**[Phase 6: Show changelog & authorize]**
+- Fetch `https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/CHANGELOG.md` the same way as Phase 3.
+- Extract every `## [VERSION] — DATE` section strictly between the installed version (exclusive) and the latest version (inclusive), with their `### Added` / `### Changed` / `### Fixed` / `### Removed` bullets verbatim. If the installed version is older than every section in the file, include all sections.
+- Present the slice per `§ IDE-aware review`:
+  - **IDE detected:** create `.grimoire/bag/drafts/` if needed and write `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` (`<epoch>` = `$(date +%s)` at write time; memorize the full path for cleanup). Tell the user in one short `📄` line that the changelog is open in the editor.
+  - **Terminal-only fallback:** print the slice inline — concise, no commentary on top.
+- If the changelog cannot be fetched, print `Changelog not available — proceeding without it.` and continue.
+- PAUSE per `§ Pause-point pattern` (`grimoire-update`: changelog review): `Proceed with the update from X.Y.Z to A.B.C? (yes/no)`. Anything other than an unambiguous yes deletes the memorized draft (if any) and ends the skill cordially.
 
-**[Phase 7: Guide reload]**
-- Print the following block verbatim:
+**[Phase 7: Run the installer]**
+- Run through the shell (the same command on both harnesses):
 
-  > To activate the new version in this current session without restarting Claude Code, run:
-  >
-  > ```
-  > /reload-plugins
-  > ```
+  ```
+  sh "${GRIMOIRE_HOME}/install.sh" --ref vA.B.C
+  ```
 
-- Pause and wait for the user to confirm.
+  `A.B.C` is the latest version from Phase 3. The installer fetches and checks out that tag in the home, re-executes its freshly checked-out self, re-copies every `grimoire-*` skill for the detected agents, refreshes the dependencies, and keeps the global `config.toml`.
+- Show the installer's closing summary to the user verbatim (version, home, agents, skills, deps, config, any `action:` line).
+- If it exits non-zero, show its error output and stop: tell the user the update did not complete and that re-running `/grimoire-update` (or the `curl … | sh` one-liner) retries it.
 
-**[Phase 8: Summary]**
-- Print a one-line confirmation: `Grimoire updated from X.Y.Z to A.B.C. Skills are now reloaded.`
-- Point the user at the full changelog if they want more detail: `Full changelog: https://github.com/ojCezarFerreira/grimoire/blob/main/CHANGELOG.md`.
-- If Phase 4 wrote the memorized `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` (IDE mode), delete that exact path now. The draft is ephemeral and must not survive past the skill's run.
+**[Phase 8: Summary & cleanup]**
+- Print: `Grimoire updated from X.Y.Z to A.B.C. Start a new session so the updated skills are loaded.`
+- Point at the full changelog: `Full changelog: https://github.com/ojCezarFerreira/grimoire/blob/main/CHANGELOG.md`.
+- Delete the memorized `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md`, if Phase 6 wrote it — on success and on failure alike.
 
 **[Notes]**
-- This skill never spawns sub-agents and never makes commits in the consumer project — the §TDD, §Sub-agent spawning, and §Commits sections of `GRIMOIRE-CONVENTIONS.md` do not apply. The only file it may write in the consumer project is the ephemeral changelog draft at `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` when running in IDE mode (see `§ IDE-aware review`), which is removed before the skill ends. Otherwise it is pure orchestration of two slash commands the user must run themselves.
-- This skill always assumes a marketplace install (`/plugin install grimoire@grimoire`). Users who installed via `--plugin-dir` or a direct git URL should run `git pull` in their plugin directory instead of the Phase 6 command — but this skill does not detect that case.
+- This skill never spawns sub-agents and never makes commits in the consumer project. Every write to `${GRIMOIRE_HOME}` and to the installed skill directories belongs to `install.sh`; the skill only runs it.
+- Operator-facing prose follows `§ User-facing language`; commands, paths, and version strings stay verbatim.
