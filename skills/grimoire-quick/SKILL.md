@@ -29,7 +29,7 @@ $ARGUMENTS
 
 **[Phase 3: Execution]**
 - Once I authorize the plan, spawn one sub-agent in the `quick` role per `§ Sub-agent spawning` (one sub-agent for the whole fix), with the model and effort of that role (`§ Configuration`) and the docs pointers of `[Required Reading]` step 2.
-- Instruct the sub-agent to execute the approved plan step-by-step per `§ TDD` and `§ Code comments`, in the user's working tree on the current branch.
+- Instruct the sub-agent to execute the approved plan step-by-step per `§ TDD` and `§ Code comments`, in the user's working tree on the current branch. On Codex the prompt begins with `cd <repo root>` — sub-agents inherit no working directory (the Codex deltas of `§ Harness adaptation`).
 
 **[Phase 4: Version Control]**
 - Instruct the sub-agent to make commits per `§ Commits`.
