@@ -44,7 +44,7 @@ A refused operation changes nothing. When the set mixes legal pending-tail chang
 **[Phase 5: Compose & Draft Review]**
 Compose the altered construct per the `§ Construct` Alteration rules (permitted operations, numbering after a structural change) — content in English. Present it per `§ IDE-aware review`:
 - **GitHub:** the throwaway draft `.grimoire/bag/drafts/construct-<epoch>.md`, holding the operation set, the new milestone description (marker kept verbatim, `## References` list rewritten), and every new or edited seed with its marker line. No renumbering: issue numbers are permanent; only the pending tail's `order=` fields change.
-- **Local:** the altered files at their final destination — `CONSTRUCT.md` (intro / derived checklist) and `references/N-*.md` — with the pending tail **renumbered contiguously** and every `depends-on` rewritten to the new numbers; the specced prefix never moves. A rename is a plain filesystem `mv` of the folder to `NNN-<new>` preserving `NNN`, with internal self-references updated (no git operation — the folder is git-ignored). Before the first edit, back the folder up to `.grimoire/bag/drafts/construct-update-backup-<epoch>/` (`§ IDE-aware review`, in-place edits of git-ignored files).
+- **Local:** before the first edit, back the folder up to `.grimoire/bag/drafts/construct-update-backup-<epoch>/` (`§ IDE-aware review`, in-place edits of git-ignored files). Then write the altered files at their final destination — `CONSTRUCT.md` (intro / derived checklist) and `references/N-*.md` — with the pending tail **renumbered contiguously** and every `depends-on` rewritten to the new numbers; the specced prefix never moves. A rename is a plain filesystem `mv` of the folder to `NNN-<new>` preserving `NNN`, with internal self-references updated (no git operation — the folder is git-ignored).
 - Terminal-only → inline.
 
 PAUSE per `§ Pause-point pattern` (`grimoire-construct-update`: draft review) for approval, edits, or abandonment. Edits → revise and re-pause. Abandonment → restore the construct to its pre-edit state (local: restore the folder from the backup, undoing any rename, then delete the backup; GitHub: nothing was written yet — delete the draft).
@@ -55,7 +55,7 @@ PAUSE per `§ Pause-point pattern` (`grimoire-construct-update`: draft review) f
   - **remove** → `gh issue edit <n> --remove-milestone --add-label grimoire:dropped && gh issue close <n> -c "Removed from construct <name>"`, drop its entry, and drop it from every remaining `depends-on` header;
   - **reorder** — and after any add or remove — → rewrite the `order=` field of every pending reference whose position changed (`gh issue edit <n> -F body.md`, marker otherwise verbatim);
   - **edit** → rewrite the pending reference's issue body (`gh issue edit <n> -F body.md`, marker verbatim) and its one-line entry;
-  - **rename** → `gh api -X PATCH repos/{owner}/{repo}/milestones/<M> -f title=<new name>`;
+  - **rename** → `gh api -X PATCH repos/{owner}/{repo}/milestones/<M> -f title="<new name>"`;
   - finally write the new description (intro and/or `## References` list) with `gh api -X PATCH repos/{owner}/{repo}/milestones/<M> -F description=@desc.md`, then delete the draft.
 - **Local:** the approved files are already in place (inline fallback: write them now); the checklist tokens are re-derived from the reference frontmatter (`§ Construct`); delete the backup.
 
