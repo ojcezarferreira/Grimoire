@@ -141,7 +141,7 @@ mode = "auto"                   # auto | on | off
 label_prefix = "grimoire"
 branch_prefix = "grimoire"
 
-[verify]                        # discovered by grimoire-init; used by execute / review / agent-browser
+[verify]                        # used by grimoire-init discovery; execute / review / agent-browser / deps
 install_command = "pnpm install"
 dev_command = "pnpm dev --port {port}"     # {port} = port allocated per page; without the placeholder UI reviews are serialized
 dev_url = "http://localhost:{port}"
