@@ -724,7 +724,7 @@ When a skill must show the user a draft, plan, or other markdown content for rev
    - throwaway drafts (`grimoire-quick`, `grimoire-update`, and the `spec` / `plan` / `construct` / `adopt` drafts): perform the write the draft stood for (issue, comment, milestone — nothing for `quick` / `update`), then delete the draft file from `.grimoire/bag/drafts/` and proceed. **Every throwaway draft is deleted after use.**
 5. On requested edits: edit the file in place and re-pause.
 6. On abandonment: every skill deletes whatever its draft created — the throwaway draft and any final-destination files (spec, plan, construct, adopt, init alike), since they were never approved — leaving an uncommitted, unapproved file pollutes the repo.
-7. **In-place edits of existing git-ignored files** (local `grimoire-construct-update`): git cannot restore them, so before the first edit back the folder up to `.grimoire/bag/drafts/construct-update-backup-<epoch>/`; on abandonment restore the folder from the backup (undoing any rename); on approval delete the backup.
+7. **In-place edits of existing git-ignored files** (local `grimoire-construct-update`, local `grimoire-plan` re-plans): git cannot restore them, so before the first edit back the affected files up to `.grimoire/bag/drafts/<skill>-backup-<epoch>/` — `construct-update-backup-<epoch>/` for `grimoire-construct-update`, `plan-backup-<epoch>/` for a `grimoire-plan` re-plan; on abandonment restore the folder from the backup (undoing any rename); on approval delete the backup.
 
 **Inline fallback (terminal-only).** When the IDE is not detected, paste the rendered draft inline in chat (legacy behavior). Pause semantics, approval gating, and downstream commit timing are identical to the IDE-aware flow.
 
