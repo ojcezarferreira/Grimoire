@@ -5,10 +5,10 @@ argument-hint: (no arguments)
 ---
 
 **[Required Reading]** — in the order of `§ Documentation`:
-1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Harness adaptation` (install location, `${GRIMOIRE_HOME}`), `§ IDE-aware review` (the changelog draft), `§ User-facing language`, `§ Pause-point pattern` (`grimoire-update`: changelog review), `§ Skill composition`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Sub-agent spawning` (this skill spawns nothing), `§ Commits` (this skill commits **nothing**), `§ Backends`, `§ .grimoire/ layout` (pages), `§ Construct`, `§ Parallel execution`, `§ Review loop`, `§ Run`.
-2. `.grimoire/PROJECT.md` and `docs/` are not read — this skill maintains the Grimoire installation, not the project; it never suggests `grimoire-init`.
+1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Harness adaptation` (install location, `${GRIMOIRE_HOME}`, the "fetch a URL" row), `§ IDE-aware review` (the changelog draft), `§ User-facing language`, `§ Pause-point pattern` (`grimoire-update`: changelog review), `§ Skill composition`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Sub-agent spawning` (this skill spawns nothing), `§ Commits` (this skill commits **nothing**), `§ Backends`, `§ .grimoire/ layout` (pages), `§ Construct`, `§ Parallel execution`, `§ Review loop`, `§ Run`.
+2. `.grimoire/PROJECT.md` and `docs/` are not read — this skill maintains the Grimoire installation, not the project; it is exempt from the `grimoire-init` reminder (`§ Documentation`).
 3. Read `.grimoire/config.toml` and `${GRIMOIRE_HOME}/config.toml` per `§ Configuration` only for the one-line `session` notice.
-4. Backend detection (`§ Backends`) is skipped — this skill never reads or writes pages or constructs.
+4. Backend detection is skipped per `§ Backends` (who detects) — this skill never reads or writes pages, constructs, or PRs.
 
 **[Objective]**
 Update the Grimoire installation on this machine — the home `${GRIMOIRE_HOME}` and the skill copies of `§ Harness adaptation` — to the latest published version. The skill reads the installed version, compares it to the latest on GitHub, shows what changed, and, once authorized, **runs the Grimoire installer itself**; the installer owns every write to the home and to the skill directories. The flow is the same on Claude Code and Codex. The only file the skill may write in the current project is the ephemeral changelog draft `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` (IDE mode), removed before the skill ends.
@@ -24,7 +24,7 @@ Update the Grimoire installation on this machine — the home `${GRIMOIRE_HOME}`
   - Anything else (no output, an error, no `.git`) → a **development checkout** — the installer's dev mode: Phase 5 prints the dev-mode notice instead.
 
 **[Phase 3: Fetch latest version]**
-- `WebFetch` `https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/VERSION` (on a harness without a web-fetch tool: `curl -fsSL <url>` through the shell) and trim it.
+- Fetch `https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/VERSION` per the "fetch a URL" row of `§ Harness adaptation` and trim it.
 - If the request fails (network, repo moved, 404), stop and tell the user the latest version could not be determined and ask them to retry later. Do **not** assume Grimoire is up to date and do **not** run the installer.
 
 **[Phase 4: Compare versions]**
