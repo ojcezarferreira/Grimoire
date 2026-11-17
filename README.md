@@ -17,7 +17,7 @@ Grimoire is a set of thirteen skills for **Claude Code** and **Codex** that run 
 
 I built Grimoire because other context orchestrators kept giving me mediocre output — too heavy, too chatty, and too eager to take decisions away from me. The result was usually a project that drifted from what I actually wanted.
 
-Grimoire is the opposite. It asks until **you** are clear on what you want, then ships exactly that: every page starts with an interview that ends in an agreed specification, and every decision Grimoire takes alone afterwards is written down as an assumption you can read in the plan. Once the specification is agreed, the rest is autonomous — plan, test-first implementation, review, fixes — and stops at a pull request with a **Human validation** section listing what you still have to check by hand. Grimoire never merges for you.
+Grimoire is the opposite. It asks until **you** are clear on what you want, then ships exactly that: every page starts with an interview that ends in an agreed specification, and every choice the planner makes on its own is written down as an assumption you can read in the plan. Once the specification is agreed, the rest is autonomous — plan, test-first implementation, review, fixes — and stops at a pull request with a **Human validation** section listing what you still have to check by hand. Grimoire never merges for you.
 
 **It is not for non-technical users.** It assumes you can read code, evaluate a plan, and own the decisions it surfaces.
 
@@ -264,7 +264,7 @@ Two TOML files, merged **key by key** over built-in defaults — built-in < glob
 | `~/.grimoire/config.toml` | Your personal defaults (models, efforts, parallelism) | The installer, once, from `config.example.toml`; never overwritten |
 | `.grimoire/config.toml` | The project — **committed** | `/grimoire-init` (`[verify]`, `[docs]`); hand-editable |
 
-A broken or unknown value prints a one-line warning and falls back to the default — configuration never stops a skill. Each sub-agent runs under a **role**, resolved to the first hit in: project role → global role → project `default` → global `default` → built-in role. Built-in values:
+An invalid value prints a one-line warning and falls back to the default, and unknown keys are ignored — configuration never stops a skill. Each sub-agent runs under a **role**, resolved to the first hit in: project role → global role → project `default` → global `default` → built-in role. Built-in values:
 
 | Role | Used by | Claude Code | Codex |
 |---|---|---|---|

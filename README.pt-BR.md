@@ -17,7 +17,7 @@ Grimoire é um conjunto de treze skills para **Claude Code** e **Codex** que con
 
 Eu construí o Grimoire porque outros orquestradores de contexto vinham me dando resultados medíocres — pesados demais, falantes demais e ávidos demais por tomar decisões no meu lugar. O resultado costumava ser um projeto que se afastava do que eu realmente queria.
 
-O Grimoire é o oposto. Ele pergunta até **você** ter clareza do que quer, e aí entrega exatamente isso: toda page começa com uma entrevista que termina numa especificação acordada, e toda decisão que o Grimoire toma sozinho depois disso fica registrada como uma premissa que você lê no plano. Com a especificação acordada, o resto é autônomo — plano, implementação com testes primeiro, revisão, correções — e para num pull request com uma seção **Human validation** listando o que você ainda precisa verificar à mão. O Grimoire nunca faz o merge por você.
+O Grimoire é o oposto. Ele pergunta até **você** ter clareza do que quer, e aí entrega exatamente isso: toda page começa com uma entrevista que termina numa especificação acordada, e toda escolha que o planejador faz por conta própria fica registrada como uma premissa que você lê no plano. Com a especificação acordada, o resto é autônomo — plano, implementação com testes primeiro, revisão, correções — e para num pull request com uma seção **Human validation** listando o que você ainda precisa verificar à mão. O Grimoire nunca faz o merge por você.
 
 **Não é uma ferramenta para pessoas não-técnicas.** Ela assume que você sabe ler código, avaliar um plano e bancar as decisões que ela traz à tona.
 
@@ -264,7 +264,7 @@ Dois arquivos TOML, mesclados **chave a chave** sobre os padrões embutidos — 
 | `~/.grimoire/config.toml` | Os seus padrões pessoais (modelos, esforços, paralelismo) | O instalador, uma vez, a partir de `config.example.toml`; nunca sobrescrito |
 | `.grimoire/config.toml` | O projeto — **commitado** | `/grimoire-init` (`[verify]`, `[docs]`); editável à mão |
 
-Um valor quebrado ou desconhecido imprime um aviso de uma linha e cai no padrão — a configuração nunca interrompe uma skill. Cada sub-agente roda sob um **papel**, resolvido pelo primeiro acerto em: papel do projeto → papel global → `default` do projeto → `default` global → papel embutido. Valores embutidos:
+Um valor inválido imprime um aviso de uma linha e cai no padrão, e chaves desconhecidas são ignoradas — a configuração nunca interrompe uma skill. Cada sub-agente roda sob um **papel**, resolvido pelo primeiro acerto em: papel do projeto → papel global → `default` do projeto → `default` global → papel embutido. Valores embutidos:
 
 | Papel | Usado por | Claude Code | Codex |
 |---|---|---|---|
