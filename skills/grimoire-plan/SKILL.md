@@ -26,7 +26,7 @@ Per `§ Pause-point pattern` (`grimoire-plan`: precondition check). Run these ch
    - GitHub only — the issue exists but its body lacks the page marker → `❌ Issue N is not managed by Grimoire. Run /grimoire-adopt N first.`
    - Still a reference (label `grimoire:reference`) → `❌ Page N has not been specified yet. Run /grimoire-spec first.`
    - Local only — the folder has no `SPEC.md` → `❌ Page N has no SPEC.md. Run /grimoire-spec first.`
-   - `planned` and a page branch matching `grimoire/<N>-*` already exists (locally or on the remote — `§ Backends`, page slug) → `❌ Page N is already being executed (branch <branch>).` `planned` with **no** branch → print a one-line notice that the page will be re-planned and continue.
+   - `planned` and a page branch matching `grimoire/<n>-*` already exists (locally or on the remote — `§ Backends`, page slug), or a local page with `status: blocked` → `❌ Page N is already being executed (branch <branch>).` `planned` with **no** branch → print a one-line notice that the page will be re-planned and continue.
    - In `review` → GitHub: `❌ Page N is already pending human review (PR #X).` — local: `❌ Page N is already pending human review (branch <branch>).`
    - Closed → `❌ Page N has already been finished.`
    - `spec` → proceed.
@@ -49,14 +49,14 @@ Never offer to run another skill automatically and never silently fix the state.
 **[Phase 4: Draft Review]**
 Compose the step files — frontmatter (when the approved DAG requires it) + the markdown body the executor follows — and present them per `§ IDE-aware review`:
 - **GitHub:** the throwaway draft `.grimoire/bag/drafts/plan-<epoch>.md`, holding the full plan comment in the `§ Backends` format — marker line, `## Assumptions`, one `<details><summary>Step K — <name></summary>` block per step containing the step file verbatim, frontmatter included.
-- **Local:** `PLAN.md` (marker line, `## Assumptions`, step overview — `§ .grimoire/ layout`) and the step files, at their final destination in `.grimoire/pages/NNN-<slug>/` (re-plan: replace the previous ones). `SPEC.md` is not touched yet.
+- **Local:** `PLAN.md` (marker line, `## Assumptions`, step overview — `§ .grimoire/ layout`) and the step files, at their final destination in `.grimoire/pages/NNN-<slug>/`. On a re-plan, first back the existing `PLAN.md` + step files up to `.grimoire/bag/drafts/plan-backup-<epoch>/` (the backup pattern of `§ IDE-aware review`, step 7), then overwrite them; abandonment restores them from the backup, approval deletes it. `SPEC.md` is not touched yet.
 - Terminal-only → inline.
 
 PAUSE per `§ Pause-point pattern` (draft review) until approved. Edits → revise in place and re-pause. Abandonment → delete what the draft created (`§ IDE-aware review`).
 
 **[Phase 5: Write]** — no commit (`§ Commits`)
 - **GitHub:** post the plan comment with `gh issue comment <n> -F <draft>` (on a re-plan the newest plan comment wins); ensure the `grimoire:planned` label and swap `grimoire:spec` → `grimoire:planned` in one `gh issue edit` (`§ Backends`, labels; a re-plan is already `grimoire:planned`); write the local cache `.grimoire/pages/<n>-<slug>/K-<step>.md` from the approved step files — `<slug>` per `§ Backends` (page slug), reusing an existing `pages/<n>-*` folder — replacing any previous cache (`§ Backends`, local cache); delete the draft.
-- **Local:** `PLAN.md` and the step files are already in place (inline fallback: write them now); set `status: planned` in the `SPEC.md` frontmatter (stamping the full frontmatter on a legacy page — `§ .grimoire/ layout`).
+- **Local:** `PLAN.md` and the step files are already in place (inline fallback: write them now; re-plan: delete the backup); set `status: planned` in the `SPEC.md` frontmatter (stamping the full frontmatter on a legacy page — `§ .grimoire/ layout`).
 
 **[Phase 6: Closing]**
 Tell the user the next step: `/grimoire-execute <n>`. Never run it automatically. If `PROJECT.md` was missing, remind the user about `grimoire-init`.
