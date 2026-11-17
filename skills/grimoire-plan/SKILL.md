@@ -28,7 +28,7 @@ Per `§ Pause-point pattern` (`grimoire-plan`: precondition check). Run these ch
    - Local only — the folder has no `SPEC.md` → `❌ Page N has no SPEC.md. Run /grimoire-spec first.`
    - `planned` and a page branch matching `grimoire/<n>-*` already exists (locally or on the remote — `§ Backends`, page slug), or a local page with `status: blocked` → `❌ Page N is already being executed (branch <branch>).` `planned` with **no** branch → print a one-line notice that the page will be re-planned and continue.
    - In `review` → GitHub: `❌ Page N is already pending human review (PR #X).` — local: `❌ Page N is already pending human review (branch <branch>).`
-   - Closed → `❌ Page N has already been finished.`
+   - Closed (local: `status: done`) → `❌ Page N has already been finished.`
    - `spec` → proceed.
 3. **Load the SPEC** in full (the issue body / `SPEC.md`).
 
