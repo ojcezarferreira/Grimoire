@@ -28,7 +28,7 @@ Per `§ Pause-point pattern` (`grimoire-adopt`). STOP on the first failure with 
 3. **Target hard-stops.** Issue: `gh issue view <n> --json number,title,body,labels,milestone,state,comments`. Milestone: `gh api repos/{owner}/{repo}/milestones/<n>`.
    - Not found → `❌ Issue N does not exist.` / `❌ Milestone N does not exist.`
    - Closed → `❌ Issue N is closed.` / `❌ Milestone N is closed.`
-   - Already managed — marker or Grimoire label present (`§ Backends`) → `❌ Issue N is already managed by Grimoire (grimoire:spec).` with the parenthesis naming the status label found / `❌ Milestone N is already managed by Grimoire.`
+   - Already managed — the page / construct marker is present (`§ Backends`, Adoption; a `grimoire:*` label without the marker does not count) → `❌ Issue N is already managed by Grimoire (grimoire:spec).` with the parenthesis naming the status label found / `❌ Milestone N is already managed by Grimoire.`
 
 **[Phase 1: Read the Object]**
 - **Issue:** title, body, labels, milestone, and every comment (already loaded in Phase 0).
@@ -41,7 +41,7 @@ Spawn a `research` sub-agent (`§ Sub-agent spawning`, `§ Harness adaptation` �
 - always an explicit list of uncertainties. No invented facts — uncertainties become Phase 3 questions.
 
 **[Phase 3: Clarifications & Improvements]**
-Per `§ Pause-point pattern` (`grimoire-adopt`: clarifications and improvements). Interview the developer: sharpen scope (in / deliberately out) and concrete acceptance criteria; for a milestone, confirm the order (already-managed issues included), the `depends-on`, the gaps to create, and whether any closed issue should be included (`§ Backends`, Adoption). Answer their questions in turn; PAUSE and iterate to consensus before drafting.
+Per `§ Pause-point pattern` (`grimoire-adopt`: clarifications and improvements). Interview the developer: sharpen scope (in / deliberately out) and concrete acceptance criteria; for a milestone, confirm the order (already-managed issues included), the `depends-on`, the gaps to create, whether any closed issue should be included, and — for each issue the research judged too large or too small — the proposed split into extra reference issues or merge into a sibling's seed (`§ Backends`, Adoption). Answer their questions in turn; PAUSE and iterate to consensus before drafting.
 
 **Size-evaluation pause (issue only)** — per `§ Pause-point pattern` (`grimoire-adopt`) and `§ Construct` (handoff-brief contract). An issue judged too large for one page → recommend a construct and PAUSE:
 - **On approval:** write `.grimoire/bag/drafts/construct-brief-<epoch>.md` (`<epoch>` = `$(date +%s)`), seeded with the issue text and the interview's findings, then **STOP** — the issue is left untouched — telling the user to run `/grimoire-construct` with the brief in a fresh session. Never delete the brief here.
@@ -50,14 +50,15 @@ Per `§ Pause-point pattern` (`grimoire-adopt`: clarifications and improvements)
 **[Phase 4: Draft Review]**
 Compose the rewrite — content in English (`§ User-facing language`) — in the throwaway draft `.grimoire/bag/drafts/adopt-<epoch>.md` (`<epoch>` = `$(date +%s)`; create the folder if needed) per `§ IDE-aware review`:
 - **Issue →** the future body: line 1 the page marker `<!-- grimoire:page v=1 -->` (`§ Backends`), then the SPEC sections (Context, Goals, Non-goals, Scope, Acceptance criteria, Constraints, Open questions, References), then `<details><summary>Original issue text</summary>…</details>` holding the original body verbatim.
-- **Milestone →** per `§ Backends` (Adoption): the future description — line 1 `<!-- grimoire:construct v=1 -->`, the intro / arc / research findings, the original description verbatim in `<details><summary>Original milestone description</summary>…</details>`, and `## References`, the numbered list in execution order with the optional `(after #…)` suffix; plus, per adopted issue, the reference body — header `<!-- grimoire:page v=1 construct=#M order=N depends-on=… -->`, the seed, then its original body under `<details><summary>Original issue text</summary>…</details>`. Already-managed issues appear in the list only (their body and label stay as they are); gaps are marked as new issues.
+- **Milestone →** per `§ Backends` (Adoption): the future description — line 1 `<!-- grimoire:construct v=1 -->`, the intro / arc / research findings, the original description verbatim in `<details><summary>Original milestone description</summary>…</details>`, and `## References`, the numbered list in execution order with the optional `(after #…)` suffix; plus, per adopted issue, the reference body — header `<!-- grimoire:page v=1 construct=#M order=N depends-on=… -->`, the seed, then its original body under `<details><summary>Original issue text</summary>…</details>`. Already-managed issues appear in the list only (their body and label stay as they are); gaps — including the remainder of a split issue — are marked as new issues; absorbed issues are marked as leaving the milestone.
 
 Terminal-only → inline. PAUSE per `§ Pause-point pattern` (`grimoire-adopt`: draft review). Edits → revise in place and re-pause. Abandonment → delete the draft; nothing on GitHub has changed.
 
 **[Phase 5: Write]** — no commit (`§ Commits`)
 Ensure every label about to be applied (label-ensure rule, `§ Backends`), then per the `gh` cheat sheet:
+Any `grimoire:*` status label already on an unmanaged issue is removed in the same edit that adds the new one (`--remove-label`, one status label at a time — `§ Backends`, Adoption).
 - **Issue:** `gh issue edit <n> -F body.md --add-label grimoire:spec`.
-- **Milestone**, in list order: an issue adopted as a reference → `gh issue edit <n> -F body.md --add-label grimoire:reference`; an already-managed issue → nothing; a gap → `gh issue create -t "<title>" -F body.md -l grimoire:reference -m "<milestone title>"`, its number filled into the list and into later `depends-on` fields. Then write the description — `gh api -X PATCH repos/{owner}/{repo}/milestones/<n> -F description=@desc.md`.
+- **Milestone**, in list order: an included closed issue → `gh issue reopen <n>` first; an issue adopted as a reference → `gh issue edit <n> -F body.md --add-label grimoire:reference`; an already-managed issue → nothing; an issue absorbed into a sibling's seed → `gh issue edit <n> --remove-milestone` plus a comment naming the absorbing issue — never closed; a gap → `gh issue create -t "<title>" -F body.md -l grimoire:reference -m "<milestone title>"`, its number filled into the list and into later `depends-on` fields. Then write the description — `gh api -X PATCH repos/{owner}/{repo}/milestones/<n> -F description=@desc.md`.
 - Delete the draft (`§ IDE-aware review`). Never specify a reference.
 
 **[Phase 6: Closing]**
