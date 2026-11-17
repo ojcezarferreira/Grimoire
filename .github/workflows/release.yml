@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.claude-plugin/plugin.json'
+      - 'VERSION'
     tags:
       - 'v*'
 
@@ -30,7 +30,7 @@ jobs:
             VERSION="${GH_REF_NAME#v}"
             TAG="$GH_REF_NAME"
           else
-            VERSION=$(jq -r '.version' .claude-plugin/plugin.json)
+            VERSION=$(tr -d '[:space:]' < VERSION)
             TAG="v$VERSION"
             if git ls-remote --exit-code --tags origin "$TAG" >/dev/null 2>&1; then
               echo "Tag $TAG already exists on origin; skipping release."
@@ -46,21 +46,12 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
-      - name: Validate plugin.json version matches tag
+      - name: Validate VERSION matches tag
         if: steps.tag.outputs.skip != 'true'
         run: |
-          PLUGIN_VERSION=$(jq -r '.version' .claude-plugin/plugin.json)
-          if [ "$PLUGIN_VERSION" != "${{ steps.tag.outputs.version }}" ]; then
-            echo "::error::plugin.json version ($PLUGIN_VERSION) does not match tag (${{ steps.tag.outputs.version }})"
-            exit 1
-          fi
-
-      - name: Validate marketplace.json version matches tag
-        if: steps.tag.outputs.skip != 'true'
-        run: |
-          MP_VERSION=$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)
-          if [ "$MP_VERSION" != "${{ steps.tag.outputs.version }}" ]; then
-            echo "::error::marketplace.json plugins[0].version ($MP_VERSION) does not match tag (${{ steps.tag.outputs.version }})"
+          FILE_VERSION=$(tr -d '[:space:]' < VERSION)
+          if [ "$FILE_VERSION" != "${{ steps.tag.outputs.version }}" ]; then
+            echo "::error::VERSION ($FILE_VERSION) does not match tag (${{ steps.tag.outputs.version }})"
             exit 1
           fi
 
