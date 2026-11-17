@@ -52,7 +52,7 @@ PAUSE per `§ Pause-point pattern` (`grimoire-construct-update`: draft review) f
 **[Phase 6: Persist]** — no commit (`§ Commits`)
 - **GitHub** — apply each approved operation with the `§ Backends` cheat sheet:
   - **add** → ensure the `grimoire:reference` label, `gh issue create -t "<title>" -F body.md -l grimoire:reference -m "<milestone title>"` with line 1 `<!-- grimoire:page v=1 construct=#M order=<n> depends-on=… -->`, inserted after the last locked entry or at the requested pending position;
-  - **remove** → `gh issue edit <n> --remove-milestone --add-label grimoire:dropped && gh issue close <n> -c "Removed from construct <name>"`, drop its entry, and drop it from every remaining `depends-on` header;
+  - **remove** → ensure the `grimoire:dropped` label (`§ Backends`, label-ensure rule), then `gh issue edit <n> --remove-milestone --add-label grimoire:dropped && gh issue close <n> -c "Removed from construct <name>"`, drop its entry, and drop it from every remaining `depends-on` header;
   - **reorder** — and after any add or remove — → rewrite the `order=` field of every pending reference whose position changed (`gh issue edit <n> -F body.md`, marker otherwise verbatim);
   - **edit** → rewrite the pending reference's issue body (`gh issue edit <n> -F body.md`, marker verbatim) and its one-line entry;
   - **rename** → `gh api -X PATCH repos/{owner}/{repo}/milestones/<M> -f title="<new name>"`;
