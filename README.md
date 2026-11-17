@@ -51,6 +51,18 @@ cd grimoire
 
 **Requirements.** `git` (except in development mode); Claude Code and/or Codex — an agent is detected when `~/.claude` / `~/.codex` exists or `claude` / `codex` is on the `PATH`, and the installer stops when neither is found and no `--agent` is given; Node.js with `npx` / `npm` for the dependencies (without it they are skipped with a warning). At run time the GitHub backend needs the [`gh`](https://cli.github.com/) CLI, authenticated.
 
+**Codex.** Codex's default `workspace-write` sandbox blocks the network (needed by `gh`, `git fetch`, `git push`) and keeps `.git` read-only, so `git worktree add` and branch creation fail. The skills that write GitHub objects, push, or create branches and worktrees — `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-run`, `/grimoire-adopt`, `/grimoire-construct`, `/grimoire-construct-update`, `/grimoire-init` (labels), `/grimoire-update` — need network access plus a sandbox that permits `.git` writes, or Codex started with `--dangerously-bypass-approvals-and-sandbox` / `-s danger-full-access`. Otherwise the phases that ask no questions turn into approval prompts, or the page ends `blocked`. Network access alone is `-c sandbox_workspace_write.network_access=true`; to set it for every session:
+
+```toml
+# ~/.codex/config.toml
+sandbox_mode = "danger-full-access"   # what -s danger-full-access does: network and .git writes
+
+# or keep workspace-write and allow only the network (branch / worktree creation still fails):
+# sandbox_mode = "workspace-write"
+# [sandbox_workspace_write]
+# network_access = true
+```
+
 ### Flags
 
 | Flag | Meaning |
@@ -74,11 +86,11 @@ Environment: `GRIMOIRE_HOME` (same as `--home`) and `GRIMOIRE_REPO` (the git URL
 | The 13 skills for Codex | `~/.agents/skills/grimoire-*` |
 | Global configuration, copied from `config.example.toml` once and never overwritten | `~/.grimoire/config.toml` |
 
-The skills are **copies**, not symlinks: every run deletes the existing `grimoire-*` folders and copies them again, replacing the token `${GRIMOIRE_HOME}` in every skill file with the absolute path of the home. The installer warns when the 0.13 Claude Code plugin is still installed, and ends with a summary (version, home, agents, skills, dependencies, config, next steps).
+The skills are **copies**, not symlinks: every run deletes the installed Grimoire skill folders and copies them again (a `grimoire-*` folder whose `SKILL.md` names no shipped skill is left in place, with a warning), replacing the token `${GRIMOIRE_HOME}` in every skill file with the absolute path of the home. The installer warns when the 0.13 Claude Code plugin is still installed, and ends with a summary (version, home, agents, skills, dependencies, config, next steps).
 
 ### Dependencies
 
-Installed from their upstream sources — **never bundled** — so each one's own license travels with it. Skills are installed with `npx -y skills add <source> --skill <name> -g -y -a <claude-code|codex>` (plus `--copy` on Windows); the CLI with `npm install -g agent-browser` when it is not already on the `PATH`, followed by `agent-browser install`. A failed dependency is a warning, never an error: without `ponytail-review` the reviewer asks the same six questions itself and says so; without `agent-browser`, `impeccable`, or `revenue-centric-design` it records that UI check as "not verified" under human validation.
+Installed from their upstream sources — **never bundled**. `npx skills add --skill` copies only the skill's folder, so a license file may not come along: each dependency's license lives in its upstream repository (linked below). Skills are installed with `npx -y skills add <source> --skill <name> -g -y -a <claude-code|codex>` (plus `--copy` on Windows); the CLI with `npm install -g agent-browser` when it is not already on the `PATH`, followed by `agent-browser install`. A failed dependency is a warning, never an error: without `ponytail-review` the reviewer asks the same six questions itself and says so; without `agent-browser`, `impeccable`, or `revenue-centric-design` it records that UI check as "not verified" under human validation.
 
 | Dependency | Source | License | Used for |
 |---|---|---|---|

@@ -51,6 +51,18 @@ cd grimoire
 
 **Requisitos.** `git` (exceto no modo de desenvolvimento); Claude Code e/ou Codex — um agente é detectado quando `~/.claude` / `~/.codex` existe ou `claude` / `codex` está no `PATH`, e o instalador para quando nenhum é encontrado e nenhum `--agent` é passado; Node.js com `npx` / `npm` para as dependências (sem ele, elas são puladas com um aviso). Em tempo de execução, o backend GitHub precisa da CLI [`gh`](https://cli.github.com/) autenticada.
 
+**Codex.** O sandbox padrão `workspace-write` do Codex bloqueia a rede (necessária para `gh`, `git fetch`, `git push`) e mantém o `.git` somente leitura, então `git worktree add` e a criação de branches falham. As skills que escrevem objetos no GitHub, fazem push ou criam branches e worktrees — `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-run`, `/grimoire-adopt`, `/grimoire-construct`, `/grimoire-construct-update`, `/grimoire-init` (labels), `/grimoire-update` — precisam de acesso à rede mais um sandbox que permita escrever no `.git`, ou do Codex iniciado com `--dangerously-bypass-approvals-and-sandbox` / `-s danger-full-access`. Sem isso, as fases que não fazem perguntas viram pedidos de aprovação, ou a página termina `blocked`. Só o acesso à rede é `-c sandbox_workspace_write.network_access=true`; para configurar em toda sessão:
+
+```toml
+# ~/.codex/config.toml
+sandbox_mode = "danger-full-access"   # what -s danger-full-access does: network and .git writes
+
+# or keep workspace-write and allow only the network (branch / worktree creation still fails):
+# sandbox_mode = "workspace-write"
+# [sandbox_workspace_write]
+# network_access = true
+```
+
 ### Flags
 
 | Flag | Significado |
@@ -74,11 +86,11 @@ Ambiente: `GRIMOIRE_HOME` (igual a `--home`) e `GRIMOIRE_REPO` (a URL git clonad
 | As 13 skills para o Codex | `~/.agents/skills/grimoire-*` |
 | Configuração global, copiada de `config.example.toml` uma vez e nunca sobrescrita | `~/.grimoire/config.toml` |
 
-As skills são **cópias**, não symlinks: cada execução apaga as pastas `grimoire-*` existentes e as copia de novo, substituindo o token `${GRIMOIRE_HOME}` em cada arquivo de skill pelo caminho absoluto do home. O instalador avisa quando o plugin 0.13 do Claude Code ainda está instalado, e termina com um resumo (versão, home, agentes, skills, dependências, config, próximos passos).
+As skills são **cópias**, não symlinks: cada execução apaga as pastas das skills do Grimoire instaladas e as copia de novo (uma pasta `grimoire-*` cujo `SKILL.md` não nomeia uma skill distribuída é mantida, com um aviso), substituindo o token `${GRIMOIRE_HOME}` em cada arquivo de skill pelo caminho absoluto do home. O instalador avisa quando o plugin 0.13 do Claude Code ainda está instalado, e termina com um resumo (versão, home, agentes, skills, dependências, config, próximos passos).
 
 ### Dependências
 
-Instaladas a partir das fontes upstream — **nunca empacotadas** —, então a licença de cada uma viaja junto com ela. As skills são instaladas com `npx -y skills add <source> --skill <name> -g -y -a <claude-code|codex>` (mais `--copy` no Windows); a CLI com `npm install -g agent-browser` quando ela ainda não está no `PATH`, seguido de `agent-browser install`. Uma dependência que falha é um aviso, nunca um erro: sem o `ponytail-review` o revisor faz ele mesmo as mesmas seis perguntas e avisa; sem `agent-browser`, `impeccable` ou `revenue-centric-design` ele registra aquela checagem de UI como "not verified" em human validation.
+Instaladas a partir das fontes upstream — **nunca empacotadas**. O `npx skills add --skill` copia só a pasta da skill, então o arquivo de licença pode não vir junto: a licença de cada dependência fica no repositório upstream dela (linkado abaixo). As skills são instaladas com `npx -y skills add <source> --skill <name> -g -y -a <claude-code|codex>` (mais `--copy` no Windows); a CLI com `npm install -g agent-browser` quando ela ainda não está no `PATH`, seguido de `agent-browser install`. Uma dependência que falha é um aviso, nunca um erro: sem o `ponytail-review` o revisor faz ele mesmo as mesmas seis perguntas e avisa; sem `agent-browser`, `impeccable` ou `revenue-centric-design` ele registra aquela checagem de UI como "not verified" em human validation.
 
 | Dependência | Fonte | Licença | Usada para |
 |---|---|---|---|
