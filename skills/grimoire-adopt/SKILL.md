@@ -5,7 +5,7 @@ argument-hint: Issue number (42 / #42) or milestone (milestone 3 / m3 / title)
 ---
 
 **[Required Reading]** — in the order of `§ Documentation`:
-1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Backends` (identifiers, the GitHub state model — markers, labels, label-ensure rule, transitions — and the `gh` cheat sheet), `§ Construct` (storage per backend, reference status, `depends-on` between references, and the `grimoire-adopt` clause of the writer contract), `§ Sub-agent spawning` (the `research` role), `§ Harness adaptation`, `§ Configuration`, `§ Documentation`, `§ Skill composition`, `§ Commits` (this skill commits **nothing**), `§ IDE-aware review`, `§ User-facing language`, `§ Pause-point pattern`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Parallel execution`, `§ Review loop`, `§ Run` — this skill writes GitHub objects only, never code; `§ .grimoire/ layout` only for the throwaway draft under `.grimoire/bag/drafts/`.
+1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Backends` (identifiers, the GitHub state model — markers, labels, label-ensure rule, transitions, **Adoption** — and the `gh` cheat sheet), `§ Construct` (storage per backend, reference status, `depends-on` between references, the `grimoire-adopt` clause of the writer contract, and the handoff-brief contract), `§ Sub-agent spawning` (the `research` role), `§ Harness adaptation`, `§ Configuration`, `§ Documentation`, `§ Skill composition`, `§ Commits` (this skill commits **nothing**), `§ IDE-aware review`, `§ User-facing language`, `§ Pause-point pattern`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Parallel execution`, `§ Review loop`, `§ Run` — this skill writes GitHub objects only, never code; `§ .grimoire/ layout` only for the files under `.grimoire/bag/drafts/` (the throwaway draft, the construct handoff brief).
 2. Read `.grimoire/PROJECT.md` (the index), then `docs/conventions.md` and any other linked doc the object touches. Missing `PROJECT.md` → proceed without it and suggest `grimoire-init` at the end (non-blocking, `§ Documentation`).
 3. Read `.grimoire/config.toml` and `${GRIMOIRE_HOME}/config.toml` per `§ Configuration` (including the one-line `session` notice).
 4. Detect the backend per `§ Backends` and announce it (`🔗 Backend: GitHub (owner/repo)` / `📁 Backend: local`). `[github].mode = "on"` without auth → `❌ GitHub backend required but gh is not authenticated.` and STOP.
@@ -19,7 +19,7 @@ $ARGUMENTS
 
 **[Hard constraints]**
 - **GitHub backend only.** Never specify a reference into a page (that is `grimoire-spec`); never create a local page or construct folder; never write `docs/`, `PROJECT.md`, or `config.toml` (`§ Documentation`); **never commit** (`§ Commits`).
-- **Nothing is lost.** Every original issue text survives under `<details><summary>Original issue text</summary>…</details>`; markers are written per `§ Backends` and kept verbatim by every later writer.
+- **Nothing is lost.** Every original issue text survives under `<details><summary>Original issue text</summary>…</details>` and the original milestone description under `<details><summary>Original milestone description</summary>…</details>` (`§ Backends`, Adoption); markers are written per `§ Backends` and kept verbatim by every later writer.
 
 **[Phase 0: Backend Gate, Input, Target Hard-Stops]**
 Per `§ Pause-point pattern` (`grimoire-adopt`). STOP on the first failure with the literal message; nothing is changed.
@@ -32,7 +32,7 @@ Per `§ Pause-point pattern` (`grimoire-adopt`). STOP on the first failure with 
 
 **[Phase 1: Read the Object]**
 - **Issue:** title, body, labels, milestone, and every comment (already loaded in Phase 0).
-- **Milestone:** title and description, then its issues — `gh issue list -m <n|title> -s all --json number,title,labels,state,body --limit 100` — and each issue's comments (`gh issue view <n> --json number,title,body,labels,milestone,state,comments`). Note every issue that is closed or already carries a Grimoire marker or label: it is raised at the Phase 3 pause, never silently folded in.
+- **Milestone:** title and description, then its issues — `gh issue list -m <n|title> -s all --json number,title,labels,state,body --limit 100` — and each issue's comments (`gh issue view <n> --json number,title,body,labels,milestone,state,comments`). Issues that already carry the page marker and closed issues are handled per `§ Backends` (Adoption) — raise them at the Phase 3 pause.
 
 **[Phase 2: Research]**
 Spawn a `research` sub-agent (`§ Sub-agent spawning`, `§ Harness adaptation` — `Explore` on Claude Code, instructed read-only on Codex) with the object's text and comments and the docs pointers of `[Required Reading]` step 2. It analyzes the codebase against the request and returns:
@@ -41,19 +41,23 @@ Spawn a `research` sub-agent (`§ Sub-agent spawning`, `§ Harness adaptation` �
 - always an explicit list of uncertainties. No invented facts — uncertainties become Phase 3 questions.
 
 **[Phase 3: Clarifications & Improvements]**
-Per `§ Pause-point pattern` (`grimoire-adopt`: clarifications and improvements). Interview the developer: sharpen scope (in / deliberately out) and concrete acceptance criteria; for a milestone, confirm the order, the `depends-on`, the gaps to create, and the fate of each issue flagged in Phase 1. Flag **"too large → milestone"** when an issue spans more than one page and let the developer decide at this pause. Answer their questions in turn; PAUSE and iterate to consensus before drafting.
+Per `§ Pause-point pattern` (`grimoire-adopt`: clarifications and improvements). Interview the developer: sharpen scope (in / deliberately out) and concrete acceptance criteria; for a milestone, confirm the order (already-managed issues included), the `depends-on`, the gaps to create, and whether any closed issue should be included (`§ Backends`, Adoption). Answer their questions in turn; PAUSE and iterate to consensus before drafting.
+
+**Size-evaluation pause (issue only)** — per `§ Pause-point pattern` (`grimoire-adopt`) and `§ Construct` (handoff-brief contract). An issue judged too large for one page → recommend a construct and PAUSE:
+- **On approval:** write `.grimoire/bag/drafts/construct-brief-<epoch>.md` (`<epoch>` = `$(date +%s)`), seeded with the issue text and the interview's findings, then **STOP** — the issue is left untouched — telling the user to run `/grimoire-construct` with the brief in a fresh session. Never delete the brief here.
+- **On decline:** continue adopting the issue as one page.
 
 **[Phase 4: Draft Review]**
 Compose the rewrite — content in English (`§ User-facing language`) — in the throwaway draft `.grimoire/bag/drafts/adopt-<epoch>.md` (`<epoch>` = `$(date +%s)`; create the folder if needed) per `§ IDE-aware review`:
 - **Issue →** the future body: line 1 the page marker `<!-- grimoire:page v=1 -->` (`§ Backends`), then the SPEC sections (Context, Goals, Non-goals, Scope, Acceptance criteria, Constraints, Open questions, References), then `<details><summary>Original issue text</summary>…</details>` holding the original body verbatim.
-- **Milestone →** the future description: line 1 `<!-- grimoire:construct v=1 -->`, the intro / arc / research findings, and `## References` — the numbered list in execution order with the optional `(after #…)` suffix (`§ Backends`); plus, per entry, the reference body: header `<!-- grimoire:page v=1 construct=#M order=N depends-on=… -->`, the seed, and — for an existing issue — its original body under `<details><summary>Original issue text</summary>…</details>`. Gaps are marked as new issues.
+- **Milestone →** per `§ Backends` (Adoption): the future description — line 1 `<!-- grimoire:construct v=1 -->`, the intro / arc / research findings, the original description verbatim in `<details><summary>Original milestone description</summary>…</details>`, and `## References`, the numbered list in execution order with the optional `(after #…)` suffix; plus, per adopted issue, the reference body — header `<!-- grimoire:page v=1 construct=#M order=N depends-on=… -->`, the seed, then its original body under `<details><summary>Original issue text</summary>…</details>`. Already-managed issues appear in the list only (their body and label stay as they are); gaps are marked as new issues.
 
 Terminal-only → inline. PAUSE per `§ Pause-point pattern` (`grimoire-adopt`: draft review). Edits → revise in place and re-pause. Abandonment → delete the draft; nothing on GitHub has changed.
 
 **[Phase 5: Write]** — no commit (`§ Commits`)
 Ensure every label about to be applied (label-ensure rule, `§ Backends`), then per the `gh` cheat sheet:
 - **Issue:** `gh issue edit <n> -F body.md --add-label grimoire:spec`.
-- **Milestone**, in list order: an existing issue → `gh issue edit <n> -F body.md --add-label grimoire:reference`; a gap → `gh issue create -t "<title>" -F body.md -l grimoire:reference -m "<milestone title>"`, its number filled into the list and into later `depends-on` fields. Then write the description — `gh api -X PATCH repos/{owner}/{repo}/milestones/<n> -F description=@desc.md`.
+- **Milestone**, in list order: an issue adopted as a reference → `gh issue edit <n> -F body.md --add-label grimoire:reference`; an already-managed issue → nothing; a gap → `gh issue create -t "<title>" -F body.md -l grimoire:reference -m "<milestone title>"`, its number filled into the list and into later `depends-on` fields. Then write the description — `gh api -X PATCH repos/{owner}/{repo}/milestones/<n> -F description=@desc.md`.
 - Delete the draft (`§ IDE-aware review`). Never specify a reference.
 
 **[Phase 6: Closing]**
