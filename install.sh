@@ -384,6 +384,14 @@ install_npm_dep() {
 	record_dep "✓ $2"
 }
 
+# Splits one deps.txt line into type, source, name, and post. CRs are dropped
+# first: on a CRLF checkout the last field would otherwise end in \r.
+parse_dep() {
+	read -r type source name post <<EOF
+$(printf '%s' "$1" | tr -d '\r')
+EOF
+}
+
 install_deps() {
 	if [ "$opt_no_deps" -eq 1 ]; then
 		record_dep "skipped (--no-deps)"
@@ -401,7 +409,8 @@ install_deps() {
 		return 0
 	fi
 	# fd 3, so no dependency command can read the manifest from stdin
-	while read -r type source name post <&3 || [ -n "${type:-}" ]; do
+	while IFS= read -r dep_line <&3 || [ -n "$dep_line" ]; do
+		parse_dep "$dep_line"
 		case $type in '' | '#'*) continue ;; esac
 		case $type in
 		skill) install_skill_dep "$source" "$name" ;;
@@ -451,7 +460,8 @@ uninstall() {
 	manifest="$home/deps.txt"
 	log "Dependencies were left in place. To remove them:"
 	if [ -f "$manifest" ]; then
-		while read -r type source name post <&3 || [ -n "${type:-}" ]; do
+		while IFS= read -r dep_line <&3 || [ -n "$dep_line" ]; do
+			parse_dep "$dep_line"
 			case $type in
 			skill) log "  npx skills remove $name -g" ;;
 			npm) log "  npm uninstall -g $source" ;;
