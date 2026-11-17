@@ -41,7 +41,7 @@ Per `§ Pause-point pattern` (clarifying questions). Typical topics: the underly
 
 **[Phase 3: Page Identity]**
 Per `§ Backends` (identifiers):
-- **GitHub:** a concise English title, meaningful on its own — the page `<slug>` is derived from it later (`§ Backends`, page slug). New page → the page number is the issue number GitHub assigns at creation (Phase 5) — nothing to compute. Consumption → the page number is the reference issue's number.
+- **GitHub:** a concise English title, meaningful on its own — the page `<slug>` is derived from it later (`§ Backends`, page slug). New page → the page number is the issue number GitHub assigns at creation (Phase 5) — nothing to compute. Consumption → the page number is the reference issue's number, and the issue is renamed to this title in Phase 5.
 - **Local:** list `.grimoire/pages/`, take `max(NNN) + 1` zero-padded to 3 digits (`001` when empty or absent), plus the `<slug>`. Folder: `.grimoire/pages/NNN-<slug>/`.
 
 **[Phase 4: Draft Review]**
@@ -81,7 +81,7 @@ Per `§ Backends` (identifiers):
 **[Phase 5: Persist]** — no commit (`§ Commits`)
 - **GitHub:** first ensure the `grimoire:spec` label (label-ensure rule, `§ Backends`).
   - **New page:** `gh issue create -t "<title>" -F <draft> -l grimoire:spec`. Report the issue number GitHub assigned — it is the page number.
-  - **Consumption:** `gh issue edit <reference#> -F <draft> --remove-label grimoire:reference --add-label grimoire:spec` — the body becomes the SPEC, its marker line (`construct=#M order=N depends-on=…`) kept verbatim; the milestone is already set.
+  - **Consumption:** `gh issue edit <reference#> -t "<title>" -F <draft> --remove-label grimoire:reference --add-label grimoire:spec` — the reference issue takes the interview's title (the page slug derives from that final title), the body becomes the SPEC with its marker line (`construct=#M order=N depends-on=…`) kept verbatim; the milestone is already set.
   - Then delete the draft.
 - **Local, new page:** the approved `SPEC.md` is already in place (inline fallback: write it now).
 - **Local, consumption:** the `SPEC.md` names its construct and carries the reference's `depends-on` translated to page numbers; then flip the reference to `specced` with its `page:` backlink, rewrite the derived checklist token in `CONSTRUCT.md`, and set `CONSTRUCT.md` `status: done` when it was the last pending reference — one write, exactly per `§ Construct` (writer contract + consumption).
