@@ -8,7 +8,7 @@ argument-hint: Free-text note(s) to fold into docs/conventions.md or PROJECT.md'
 1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Documentation` (the routing rule, the synthesis discipline, the dual-writer contract), `§ Configuration`, `§ Harness adaptation`, `§ Skill composition`, `§ Commits`, `§ IDE-aware review`, `§ User-facing language`, `§ Pause-point pattern`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Sub-agent spawning` (this skill spawns nothing), `§ Backends`, `§ .grimoire/ layout` (pages), `§ Construct`, `§ Parallel execution`, `§ Review loop`, `§ Run` — this skill is orthogonal to the page pipeline and never creates a page.
 2. `.grimoire/PROJECT.md` (the index) and `docs/conventions.md` are this skill's **targets** — read them in Phase 1, where the hard-stop is checked.
 3. Read `.grimoire/config.toml` and `${GRIMOIRE_HOME}/config.toml` per `§ Configuration` (including the one-line `session` notice) — `[docs].dir` locates `conventions.md`.
-4. Backend detection (`§ Backends`) is skipped — this skill never reads or writes pages or constructs.
+4. Backend detection is skipped per `§ Backends` (who detects) — this skill never reads or writes pages, constructs, or PRs.
 
 **[Objective]**
 Fold the user's free-text note(s) into the project's context with surgical, incremental edits — each rule routed per `§ Documentation` to `docs/conventions.md` or to `.grimoire/PROJECT.md` `## Grimoire rules`. Never rewrite a whole file, never add a section, never regenerate a skeleton — only sharpen what is already there or append a single well-phrased entry.
@@ -17,7 +17,7 @@ $ARGUMENTS
 
 **[Hard constraints]**
 - Only `docs/conventions.md` and the `## Grimoire rules` section of `.grimoire/PROJECT.md` may be edited (`§ Documentation`, dual-writer contract). No other file, no other section, no section header added, renamed, or removed.
-- Never create `.grimoire/PROJECT.md` — hard-stop instead. Never create `docs/conventions.md` either: creating docs files belongs to `grimoire-init`.
+- Never create `.grimoire/PROJECT.md` — hard-stop instead. `docs/conventions.md` MAY be created — a heading plus the routed rule(s) — when a rule routes there and the file is missing; no other `docs/*` file is ever created (`§ Documentation`).
 - Never create a page, never touch a backend object, never spawn a sub-agent.
 
 **[Phase 1: Precondition Check (HARD STOP)]**
@@ -26,7 +26,7 @@ Per `§ Pause-point pattern` (`grimoire-note`: precondition check): `.grimoire/P
 > ❌ .grimoire/PROJECT.md does not exist.
 > There is nowhere to write — run `/grimoire-init` first, then re-invoke `/grimoire-note`.
 
-STOP. Never create a skeleton; never offer to run `grimoire-init` automatically. Otherwise read `## Grimoire rules` and `docs/conventions.md` in full. `docs/conventions.md` missing → rules routed to it cannot be written: say so at the Phase 6 pause and point the user at `/grimoire-init` (update mode proposes the missing canonical files).
+STOP. Never create a skeleton; never offer to run `grimoire-init` automatically. Otherwise read `## Grimoire rules` and `docs/conventions.md` in full. `docs/conventions.md` missing → it is created at Phase 6 only if a rule routes to it — a heading plus the routed rule(s), in `[docs].language`.
 
 **[Phase 2: Input Parsing & Semantic Split]**
 Parse the user's free-text input. Semantically split it into N distinct rules when the input carries several (e.g., two sentences encoding two unrelated conventions). Single-rule inputs stay as one entry. Produce a structured list internally — the user-facing surface of the split happens at Phase 6 ("Detected N distinct rules: …").
@@ -62,7 +62,7 @@ PAUSE per `§ Pause-point pattern` (`grimoire-note`: draft review). Wait for exp
 
 - **On approval:** proceed to Phase 7.
 - **On requested edits:** re-apply Phases 3–5 with the user's corrections and re-pause.
-- **On abandonment:** restore every touched file to its pre-edit state (`git show HEAD:<path>` written back) — never leave an unapproved file on disk.
+- **On abandonment:** restore every touched file to its pre-edit state (`git show HEAD:<path>` written back) and delete a `docs/conventions.md` this run created — never leave an unapproved file on disk.
 
 **[Phase 7: Commit]**
 Per `§ Commits`:
