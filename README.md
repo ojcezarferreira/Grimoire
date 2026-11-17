@@ -6,226 +6,347 @@
 
 **English** · [Português (Brasil)](README.pt-BR.md)
 
-A Claude Code plugin bundling ten skills for a disciplined **Spec → Plan → Execute** pipeline, with a **Quick** fast-path, an **Init** step that gives every session shared project context, and an **Update** step that keeps the plugin itself current.
-
 </div>
 
+Grimoire is a set of thirteen skills for **Claude Code** and **Codex** that run a disciplined **Spec → Plan → Execute** workflow. You stay in the loop where it matters — the spec interview — and from there Grimoire plans the work, implements it test-first on its own branch in an isolated worktree, and drives an **autonomous review loop** (a reviewer and a fixer, round after round) that ends in a pull request waiting for **your** review. `grimoire-run` does the same for a whole **construct** — a larger objective split into ordered pages — interviewing you first and then running every page on its own. Workflow state lives in **GitHub milestones, issues, and pull requests** — never committed into your repository (a git-ignored local mode covers repositories without GitHub).
+
 > [!WARNING]
-> **Early development.** Grimoire is brand-new — it works for the author's day-to-day Claude Code sessions but has not been battle-tested across many projects or teams. Expect rough edges, breaking changes between minor versions, and gaps in error messages. Issues and PRs are very welcome.
+> **Early development.** Grimoire works for the author's day-to-day sessions but has not been battle-tested across many projects or teams. Expect rough edges and breaking changes between minor versions. Issues and PRs are very welcome.
 
 ## Why Grimoire
 
-Grimoire is a small bundle of Claude Code skills I built because I kept getting mediocre output from other context orchestrators — they were too heavy, too chatty, and too eager to take decisions away from me. The result was usually a project that drifted from what I actually wanted.
+I built Grimoire because other context orchestrators kept giving me mediocre output — too heavy, too chatty, and too eager to take decisions away from me. The result was usually a project that drifted from what I actually wanted.
 
-Grimoire is the opposite: a disciplined pipeline that asks until **you** are clear on what you want, then ships exactly that. It will help you think through a fuzzy idea, but it will not pretend to know your project better than you do, and it will not silently choose for you.
+Grimoire is the opposite. It asks until **you** are clear on what you want, then ships exactly that: every page starts with an interview that ends in an agreed specification, and every decision Grimoire takes alone afterwards is written down as an assumption you can read in the plan. Once the specification is agreed, the rest is autonomous — plan, test-first implementation, review, fixes — and stops at a pull request with a **Human validation** section listing what you still have to check by hand. Grimoire never merges for you.
 
-**It is not for non-technical users.** It assumes you can read code, evaluate a plan, and own the decisions it surfaces. If that's you, Grimoire stays out of your way and gets the page done.
+**It is not for non-technical users.** It assumes you can read code, evaluate a plan, and own the decisions it surfaces.
 
-> Every change Grimoire tracks is called a **page**: a folder under `.grimoire/pages/` containing a `SPEC.md` and one or more sequential step files, plus a single entry in `.grimoire/HISTORIC.md` that records its status (`[spec]` → `[planned]` → `[finished]`).
->
-> When an objective is too big for a single page, Grimoire tracks it as a **construct**: a larger goal decomposed into a flat, ordered list of reference-seeds under `.grimoire/constructs/`, where each reference later becomes one page through the normal spec interview. See [the construct flow](#constructs-objectives-too-big-for-one-page).
+> Every change Grimoire tracks is a **page** — on GitHub, an issue whose body is the specification and whose work ships as one pull request. An objective too big for one page is a **construct** — a milestone whose issues are ordered **references**, each later specified into a page.
 
 ## Install
 
-```
-/plugin marketplace add ojCezarFerreira/grimoire
-/plugin install grimoire@grimoire
-```
+**macOS, Linux, Git Bash:**
 
-That's it — `/grimoire-init`, `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-quick`, `/grimoire-know`, `/grimoire-update`, `/grimoire-note`, `/grimoire-deps`, `/grimoire-construct`, and `/grimoire-construct-update` are now available in every Claude Code session.
-
-To pull a newer version later, just run `/grimoire-update` — it handles the version check, changelog diff, and the two official commands for you.
-
-<details>
-<summary>Other install options</summary>
-
-```
-# Install to project scope (shared via .claude/settings.json)
-claude plugin install grimoire --scope project
-
-# Local trial without a marketplace
-claude --plugin-dir /path/to/this/repo
+```sh
+curl -fsSL https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/install.sh | sh
 ```
 
-The `grimoire@grimoire` form in the main install command is `plugin-name@marketplace-name` (both happen to be `grimoire` here).
+Pass flags after `sh -s --`, for example `… | sh -s -- --agent codex --no-deps`.
 
-</details>
+**Windows PowerShell** (needs [Git for Windows](https://git-scm.com/download/win); the script runs `install.sh` through its `bash.exe`):
+
+```powershell
+irm https://raw.githubusercontent.com/ojCezarFerreira/grimoire/main/install.ps1 | iex
+```
+
+To pass flags on Windows, run the `curl … | sh -s -- <flags>` line from Git Bash.
+
+**From a checkout** (development mode — the checkout itself is the Grimoire home; nothing is cloned, and `--ref`, `--home`, `GRIMOIRE_HOME` are ignored with a notice):
+
+```sh
+git clone https://github.com/ojCezarFerreira/grimoire.git
+cd grimoire
+./install.sh            # Windows PowerShell: .\install.ps1 -- <flags>
+```
+
+**Requirements.** `git` (except in development mode); Claude Code and/or Codex — an agent is detected when `~/.claude` / `~/.codex` exists or `claude` / `codex` is on the `PATH`, and the installer stops when neither is found and no `--agent` is given; Node.js with `npx` / `npm` for the dependencies (without it they are skipped with a warning). At run time the GitHub backend needs the [`gh`](https://cli.github.com/) CLI, authenticated.
+
+### Flags
+
+| Flag | Meaning |
+|---|---|
+| `--ref <tag\|branch>` | Version to install. Default: the latest `v*` release tag; `main` = edge. |
+| `--agent claude\|codex` | Install for this agent only. Repeatable; overrides detection. |
+| `--no-deps` | Skip the third-party dependencies listed in `deps.txt`. |
+| `--dry-run` | Print every action, write nothing. |
+| `--uninstall [--purge]` | Remove the `grimoire-*` skills; `--purge` also deletes the Grimoire home. |
+| `--home <dir>` | Grimoire home. Default: `$GRIMOIRE_HOME`, else `$HOME/.grimoire`. |
+| `-h`, `--help` | Show the help. |
+
+Environment: `GRIMOIRE_HOME` (same as `--home`) and `GRIMOIRE_REPO` (the git URL cloned in remote mode; default `https://github.com/ojCezarFerreira/grimoire.git`).
+
+### What gets installed
+
+| What | Where |
+|---|---|
+| Grimoire home — a clone of this repository (`GRIMOIRE-CONVENTIONS.md`, `VERSION`, `install.sh`, `deps.txt`, …), marked with `git config grimoire.managed true` | `~/.grimoire` (`--home` / `GRIMOIRE_HOME`) |
+| The 13 skills for Claude Code | `~/.claude/skills/grimoire-*` |
+| The 13 skills for Codex | `~/.agents/skills/grimoire-*` |
+| Global configuration, copied from `config.example.toml` once and never overwritten | `~/.grimoire/config.toml` |
+
+The skills are **copies**, not symlinks: every run deletes the existing `grimoire-*` folders and copies them again, replacing the token `${GRIMOIRE_HOME}` in every skill file with the absolute path of the home. The installer warns when the 0.13 Claude Code plugin is still installed, and ends with a summary (version, home, agents, skills, dependencies, config, next steps).
+
+### Dependencies
+
+Installed from their upstream sources — **never bundled** — so each one's own license travels with it. Skills are installed with `npx -y skills add <source> --skill <name> -g -y -a <claude-code|codex>` (plus `--copy` on Windows); the CLI with `npm install -g agent-browser` when it is not already on the `PATH`, followed by `agent-browser install`. A failed dependency is a warning, never an error: the reviewer then records the check it could not run as "not verified" under human validation.
+
+| Dependency | Source | License | Used for |
+|---|---|---|---|
+| `ponytail-review` skill | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) | MIT | The reviewer's code-review check (correct, secure, holds under load, tested, fast, lean). |
+| `revenue-centric-design` skill | [heliocosta-dev/revenue-centric-design](https://github.com/heliocosta-dev/revenue-centric-design) | Source-available — attribution required, no use for gambling / betting products (see its `LICENSE`) | UI review lens on conversion, onboarding, pricing, and checkout surfaces only. |
+| `impeccable` skill | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | Apache-2.0 | UI review lens: hierarchy, accessibility, consistency. |
+| `agent-browser` skill + CLI | [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) (npm `agent-browser`) | Apache-2.0 | Opening the changed routes in a browser during UI review: accessibility snapshot, console errors, screenshots. |
+
+### Update
+
+Run `/grimoire-update`. It compares the installed `VERSION` with the latest on GitHub, shows the changelog delta, and on your ok runs `sh ~/.grimoire/install.sh --ref v<latest>` itself; then start a new session. Re-running the `curl … | sh` one-liner does the same. A development checkout is updated by hand: `git pull`, then `./install.sh`.
+
+### Uninstall
+
+```sh
+sh ~/.grimoire/install.sh --uninstall            # remove the grimoire-* skills from both agents
+sh ~/.grimoire/install.sh --uninstall --purge    # ...and delete ~/.grimoire (global config included)
+```
+
+`curl … | sh -s -- --uninstall [--purge]` works too. `--purge` deletes only a home the installer cloned — never a development checkout. Dependencies are left in place; the installer prints the commands that remove them (`npx skills remove <name> -g`, `npm uninstall -g agent-browser`).
+
+## Migrating from 0.13
+
+0.13 was a Claude Code plugin that committed its state (`.grimoire/HISTORIC.md`, page and construct folders) into your repository. 0.14 is installed by the installer and keeps that state out of git.
+
+1. Remove the plugin:
+
+   ```sh
+   claude plugin uninstall grimoire@grimoire
+   claude plugin marketplace remove grimoire
+   ```
+
+2. Run the installer (above).
+3. Run `/grimoire-init` in each project. When it finds 0.13 state tracked by git (`.grimoire/pages/`, `.grimoire/constructs/`, `.grimoire/HISTORIC.md`, `.grimoire/bag/historic/`), it proposes the migration and asks for your consent — **never silently**, and you can decline. Accepted, it stamps a `status:` frontmatter on every legacy page and construct (from the `HISTORIC.md` entries: `[spec]` → `spec`, `[planned]` → `planned`, `[finished]` → `done`), untracks the folders that are now git-ignored (they stay on disk), deletes `HISTORIC.md` and `bag/historic/`, and commits `chore(grimoire): migrate to 0.14 layout`. On the GitHub backend, pages still in progress are no longer addressable by number (numbers are now issue numbers): re-specify them with `/grimoire-spec`, pasting their `SPEC.md`. The same run converts a pre-0.14 `PROJECT.md`: its sections seed the missing `docs/` files and the new `PROJECT.md` index.
 
 ## Skills
 
-| Skill | What it does | Details |
-|-------|--------------|---------|
-| `/grimoire-init` | Interview the project once and write `.grimoire/PROJECT.md` so every later skill starts with shared context. | [↓](#grimoire-init) |
-| `/grimoire-spec <request>` | Clarify a feature/fix and write `SPEC.md` for a new page; registers it in `HISTORIC.md` as `[spec]`. | [↓](#grimoire-spec) |
-| `/grimoire-plan <NNN>` | Decompose `SPEC.md` into sequential step files; flips the page to `[planned]`. | [↓](#grimoire-plan) |
-| `/grimoire-execute <NNN>` | Run each step file in its own sub-agent under strict TDD; flips the page to `[finished]`. | [↓](#grimoire-execute) |
-| `/grimoire-quick <fix>` | Fast-path for trivial fixes. Refuses and redirects to `/grimoire-spec` if scope is too big. | [↓](#grimoire-quick) |
-| `/grimoire-know <question>` | Answer questions about the repository or its application — read-only, with web research and source citations when needed. | [↓](#grimoire-know) |
-| `/grimoire-update` | Check installed vs. latest version, show changelog, guide you through the official update commands. | [↓](#grimoire-update) |
-| `/grimoire-note <note>` | Surgically refine `.grimoire/PROJECT.md`'s Key Conventions and Notes from a free-text input — semantic dedup, retroactive consolidation, IDE-aware diff review. | [↓](#grimoire-note) |
-| `/grimoire-deps [pkg/ecosystem]` | Audit dependencies (security/semver/maturity/reputation), apply the safe updates you pick with per-dependency atomic commits gated by the build/test, and route breaking upgrades to `/grimoire-spec`. | [↓](#grimoire-deps) |
-| `/grimoire-construct <objective>` | Decompose a too-big-for-one-page objective into a construct — an ordered list of reference-seeds under `.grimoire/constructs/` — that `/grimoire-spec <NNN>` later expands one page at a time. | [↓](#grimoire-construct) |
-| `/grimoire-construct-update <NNN\|name> <change>` | Alter an existing construct in place — add/remove/reorder references, refine a reference, rewrite the intro, or rename — while the locked `[specced]` prefix stays immutable. | [↓](#grimoire-construct-update) |
+| Skill | What it does | Argument |
+|---|---|---|
+| [`/grimoire-init`](#grimoire-init) | Analyze the project, interview you, and write `docs/`, the `.grimoire/PROJECT.md` index, and `.grimoire/config.toml`; migrate 0.13 repositories. | optional extra context or focus areas |
+| [`/grimoire-spec`](#grimoire-spec) | Interview you to consensus and write a page's SPEC — a GitHub issue (`grimoire:spec`) or a local `SPEC.md`; with a bare construct number, specify its next reference. | a page request, or a construct number |
+| [`/grimoire-plan`](#grimoire-plan) | Optional interactive planner: write the step plan as a plan comment (`grimoire:planned`) or local step files. | page number |
+| [`/grimoire-execute`](#grimoire-execute) | Auto-plan if needed, execute the steps in a page worktree, open a draft PR, and run review rounds until the PR is ready for you or the page is blocked. Asks no questions. | page number |
+| [`/grimoire-run`](#grimoire-run) | Run a whole construct: spec interviews first, then every page autonomously in dependency waves with stacked PRs. | construct (milestone number / title, or `NNN` / name locally) |
+| [`/grimoire-construct`](#grimoire-construct) | Decompose a too-big objective into a construct: a milestone with one `grimoire:reference` issue per ordered reference. | an objective, or a construct-brief path |
+| [`/grimoire-construct-update`](#grimoire-construct-update) | Add, remove, reorder, or edit pending references, rewrite the intro, or rename a construct; specified references are locked. | construct number or name, plus the change |
+| [`/grimoire-adopt`](#grimoire-adopt) | Bring an existing GitHub issue (→ page) or milestone (→ construct) under Grimoire management. GitHub only. | issue (`42` / `#42`) or milestone (`milestone 3` / `m3` / title) |
+| [`/grimoire-quick`](#grimoire-quick) | Small fix on your current branch: scope gatekeeper, a plan you authorize, one sub-agent with TDD. No page. | task / fix description |
+| [`/grimoire-know`](#grimoire-know) | Answer a question about the repository or its application — read-only, with web research and citations when needed. | your question |
+| [`/grimoire-note`](#grimoire-note) | Fold a free-text note into `docs/conventions.md` or `PROJECT.md`'s `## Grimoire rules`, deduplicated and consolidated. | free-text note(s) |
+| [`/grimoire-deps`](#grimoire-deps) | Audit dependencies (CVEs, semver risk, maturity, reputation), apply the safe bumps you pick one commit each, route breaking ones to `/grimoire-spec`. | optional package or ecosystem |
+| [`/grimoire-update`](#grimoire-update) | Update the Grimoire installation: show the changelog delta, then run the installer on your ok. | none |
 
 ## Skills in detail
 
+Every skill reads `GRIMOIRE-CONVENTIONS.md` and both configuration files before it starts and — except `/grimoire-update` — the project's `.grimoire/PROJECT.md` index and the docs it links. The skills that work with pages, constructs, or PRs (and `/grimoire-init`) then detect the backend and announce it (`🔗 Backend: GitHub (owner/repo)` or `📁 Backend: local`). Messages are written to you in your language; files, issues, PRs, and commits stay English.
+
 ### /grimoire-init
 
-Run this once per project (and any time the project's purpose, stack, or constraints shift meaningfully). It scans your repo for signals — manifests, build configs, CI definitions, top-level layout — and then asks targeted questions about anything it cannot infer: the project's purpose, the audience, the current stage, non-obvious conventions.
+Run it once per project, and again whenever the project changes meaningfully. It reads the README, manifests, build and CI configuration, and the top-level layout; discovers the install, dev, test, build, and lint commands (from the lockfile, `package.json` scripts, `Makefile`, `pyproject.toml`, … — read, never run), using a `{port}` placeholder when the dev server accepts a port flag; and asks only what it cannot infer — purpose, audience, stage, conventions, rules for the Grimoire agents, the docs language, missing commands.
 
-After draft review and your approval, it writes `.grimoire/PROJECT.md` with sections for **Purpose**, **Audience**, **Tech Stack**, **Repository Layout**, **Key Conventions / Constraints**, **Current Status**, and **Notes**. From then on, every other Grimoire skill loads `PROJECT.md` automatically so the orchestrator and its sub-agents share baseline context.
+After a single draft review it writes:
+- **`docs/`** — neutral project documentation with no Grimoire vocabulary: `overview.md`, `architecture.md`, `conventions.md`, `development.md`. When `docs/` exists it only proposes the missing ones and never rewrites yours.
+- **`.grimoire/PROJECT.md`** — an index: one line per `docs/*` file, then `## Grimoire rules` (how the agents must behave in this repository).
+- **`.grimoire/config.toml`** — `[verify]` and `[docs]`.
+- **`.gitignore`** — a `# Grimoire` block ignoring `.grimoire/pages/`, `.grimoire/constructs/`, `.grimoire/bag/`.
 
-Re-running enters **update mode** — it preserves what is still accurate and asks only about deltas. It never writes to `HISTORIC.md`; that is owned by `grimoire-spec`.
+On GitHub it also creates the `grimoire:*` labels. With an existing `PROJECT.md` it runs in **update mode** and asks only about what changed, keeping every existing configuration value. It also proposes the [0.13 migration](#migrating-from-013) when it applies. Commit: `docs(grimoire): initialize project context` (or `update project context`).
 
 ### /grimoire-spec
 
-The only entry point of the long-form pipeline. You hand it a request in free text (`/grimoire-spec "add user-auth endpoint"`); it analyzes the relevant slice of the codebase, asks clarifying questions until consensus on **goals**, **non-goals**, **scope**, **acceptance criteria**, **constraints**, and **open questions**, and then — after draft review — writes `.grimoire/pages/NNN-[page-name]/SPEC.md`.
+The entry point. Hand it a request in free text; a research sub-agent analyzes the relevant code, then Grimoire interviews you — goals, non-goals, scope, acceptance criteria, constraints, open questions — until you agree, and presents the SPEC for review. On GitHub the SPEC becomes an **issue** labelled `grimoire:spec` (the issue number is the page number); locally, `.grimoire/pages/NNN-<slug>/SPEC.md` with `status: spec`.
 
-The page number `NNN` is auto-assigned as `max(existing) + 1`, zero-padded. The page name is short kebab-case (2–5 words) chosen to read meaningfully on its own.
-
-`grimoire-spec` is the only skill that creates a new page folder and the only writer of `HISTORIC.md` beyond an in-place status flip — it bootstraps the file if missing, prepends the new entry as item `1` with status `[spec]`, and rotates the file to `.grimoire/bag/historic/HISTORIC-N.md` once it reaches five entries.
-
-Two construct-aware modes layer on top. In free-text mode, after analyzing the codebase, if the request is **too large for a single page** `grimoire-spec` recommends turning it into a [construct](#constructs-objectives-too-big-for-one-page); on your approval it writes a handoff brief and STOPS without creating a page, so you can run `/grimoire-construct` in a fresh session. When the input is **only a number** (`/grimoire-spec 3`), it switches to construct-consumption mode: it resolves construct `3`, takes the next `[pending]` reference, runs the full spec interview seeded by it, produces a normal page, and flips that reference to `[specced]` in `CONSTRUCT.md` with a backlink to the new page.
+If the request is too large for one page, it recommends a construct; on your approval it writes a handoff brief to `.grimoire/bag/drafts/construct-brief-<epoch>.md` and stops, so you can run `/grimoire-construct` with it in a fresh session. Given **only a number**, it consumes that construct's first pending reference instead: the reference seeds the full interview, and the reference issue itself becomes the page (relabelled `grimoire:spec`); locally the reference is flipped to `specced`. Commits nothing. Next: `/grimoire-plan <n>` or `/grimoire-execute <n>`.
 
 ### /grimoire-plan
 
-Takes a page number (`1` or `001`). Hard-stops with a clear message if the page does not exist, has no `SPEC.md`, or is not in `[spec]` status — it never silently fixes the state or runs another skill for you.
+Optional — use it when you want to steer the plan; otherwise `/grimoire-execute` plans on its own. It hard-stops with a clear message when the page does not exist, is an issue not managed by Grimoire (→ `/grimoire-adopt`), is still a reference, is already being executed or in review, or is finished. It asks about anything the SPEC left ambiguous, chooses the number of steps by how much context each one needs, and — only when some steps are genuinely independent — adds `depends-on` / `touches` frontmatter so they can run in parallel waves, showing you the waves before anything is written. Every decision it took alone goes into `## Assumptions`.
 
-When preconditions pass, it reads `SPEC.md` in full, evaluates complexity, and writes sequential step files (`1-[step].md`, `2-[step].md`, …) inside the existing page folder. The plan owner decides how many step files to emit: simple pages get a single step file; larger pages get more to preserve context lucidity during execution. Finally, it updates the page's `HISTORIC.md` entry from `[spec]` to `[planned]` in place — no append, no rotate.
-
-When the planned step breakdown contains genuinely independent steps, `grimoire-plan` MAY emit YAML frontmatter on step files (`depends-on`, `touches`) declaring inter-step dependencies — see [`GRIMOIRE-CONVENTIONS.md § Parallel execution`](GRIMOIRE-CONVENTIONS.md#-parallel-execution). The resulting wave plan is surfaced to you at the final-clarity-check pause-point before any step file is written, so you can veto a suspect parallelization. Pages whose steps are inherently sequential get no frontmatter and remain legacy strict-serial pages.
+After review, on GitHub it posts the **plan comment** (`## Assumptions` plus one collapsed block per step) and swaps the label to `grimoire:planned`; locally it writes `PLAN.md` and the step files and sets `status: planned`. A planned page with no branch yet can be re-planned. Commits nothing.
 
 ### /grimoire-execute
 
-Takes a page number. Hard-stops if the page is missing, has no step files, or is not in `[planned]` status.
+Takes a page from `spec` or `planned` to a pull request waiting for your review — and **asks nothing** along the way. The session is a pure orchestrator: every plan, step, review, and fix runs in a sub-agent.
 
-When preconditions pass, it spawns **one sub-agent per step file** in strict numeric order — step `N+1` never starts until step `N` has fully completed. Each sub-agent runs its step file under strict TDD (Red/Green/Refactor) and makes atomic Conventional Commits as it goes. On success, the page's `HISTORIC.md` entry is updated from `[planned]` to `[finished]` in place; no files are moved.
+1. **Checks** — hard-stops on a missing, unmanaged, unspecified, in-review, or finished page; on a dependency page never executed or blocked; on cyclic or dangling step dependencies.
+2. **Auto-plan** — a page still in `spec` is planned by a sub-agent without an interview; open choices become `## Assumptions` in the plan comment.
+3. **Branch and worktree** — branch `grimoire/<N>-<slug>` in its own worktree `.grimoire/bag/worktrees/page-<N>/`, based on the default branch (locally: the branch you have checked out), or **stacked** on the branch of a dependency whose PR is not merged yet. Your working tree never changes branch.
+4. **Steps** — one sub-agent per step, test-first with atomic commits, strictly in order or in parallel waves. After the first commit the branch is pushed and a **draft PR** is opened (`Closes #N`).
+5. **Review loop** — up to `[review].max_rounds` (default 3). Each round a fresh reviewer checks **(a)** scope against every acceptance criterion, **(b)** `ponytail-review`, **(c)** the full `test_command` + `build_command` + `lint_command`, and **(d)** UI, when a changed file matches `[review].ui_globs`: a fresh dev server in the page worktree, `agent-browser`, `impeccable`, `revenue-centric-design` on conversion surfaces, and conformance with your own design system. `changes-requested` → a fixer commits and pushes, and the next round starts.
+6. **Outcome** — `approve`: the reviewer writes `## Summary` and `## Human validation` into the PR body, the PR is marked ready (`gh pr ready`), and the label becomes `grimoire:review`. Rounds exhausted (or a failed step): `grimoire:blocked`, the PR stays draft, and a `⛔` comment lists the unresolved findings and the way back — reply on the issue or the PR, then run `/grimoire-execute N` again.
 
-When any step file of the page declares `depends-on` frontmatter, `grimoire-execute` switches to a parallel-wave model: it computes Kahn-style topological waves, runs all steps in a wave concurrently — one sub-agent per step in its own throwaway git worktree under `.grimoire/bag/worktrees/page-NNN-step-K/` — cherry-picks successful siblings back to the main branch in step-number order, and tears down every worktree unconditionally before the next wave and at end of run. Pages with no `depends-on` frontmatter anywhere fall back to the legacy strict-serial path (byte-identical to pre-0.8.0). See [`GRIMOIRE-CONVENTIONS.md § Parallel execution`](GRIMOIRE-CONVENTIONS.md#-parallel-execution) for the full contract.
+Re-running on a page whose branch already exists **resumes** it (`▶ Resuming page N on existing branch …`): your new comments go to the fixer and the reviewer, and the review restarts at round 1. Worktrees are always torn down at the end; the branch stays. It never deletes a branch and never closes a PR. Locally the PR is replaced by the branch plus `REVIEW.md`.
 
-### /grimoire-quick
+### /grimoire-run
 
-Fast-path for trivial fixes (typos, one-line bug fixes, small tweaks). Two pause points protect you from misuse:
+Runs a whole construct. **Phase 1 is interactive:** one `/grimoire-spec` interview per pending reference, in order — answer "skip the rest" at any point to leave the remaining references (and whatever depends on them) for later. Then it prints `🚀 Autonomous phase: N pages, K waves — you can leave.` and **asks nothing more**.
 
-- **Scope gatekeeper.** If `grimoire-quick` judges the request too large or risky, it STOPS and tells you to run `/grimoire-spec` instead. It will not "just try" a large change.
-- **Plan authorization.** Even on small tasks, it prints an inline plan and waits for your explicit go-ahead before any code is written.
-
-Quick stays fully ephemeral — no page folder, no `HISTORIC.md` entry, no rotation. The fix lands as one or more atomic Conventional Commits and that is it.
-
-### /grimoire-know
-
-Read-only Q&A about the repository or the application it builds. You ask a question in free text (`/grimoire-know "how does the historic rotation work?"`); it spawns a sub-agent with codebase access (`Read`, `Grep`, `Glob`, read-only `Bash`) and web access (`WebSearch`, `WebFetch`) that inspects only the files needed and consults the web when the answer depends on facts outside the repo.
-
-The reply leads with the direct answer, explicitly flags anything the agent is not confident about, and ends with a `References` section listing every URL consulted when web research was used. Writes nothing, makes no commits, and never touches any `.grimoire/` state files — it is orthogonal to the Spec → Plan → Execute pipeline (same treatment as `grimoire-update`).
-
-### /grimoire-update
-
-Plugin self-maintenance. Reads the installed version from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`, fetches the latest `plugin.json` and `CHANGELOG.md` from GitHub, and — only if the versions differ — shows you the changelog diff between the two and asks for confirmation. On `yes`, it walks you through the two official Claude Code commands (`/plugin marketplace update grimoire`, then `/reload-plugins`) and waits for you to run each before continuing.
-
-If you are already on the latest version, it exits silently. It writes nothing to your project and never spawns sub-agents — it is pure orchestration of two slash commands you run yourself.
-
-### /grimoire-note
-
-Surgical, incremental writer for `.grimoire/PROJECT.md`. You hand it a free-text note (`/grimoire-note "we always use snake_case in Postgres columns"`); it parses the input, semantically splits it into N distinct rules when applicable, reads `## Key Conventions / Constraints` and `## Notes` in full, and proposes the best synthesis against what is already there — merge, rewrite, generalize, or accept as new — favoring minimum-word phrasing. Every invocation also runs a retroactive consolidation pass over all existing rules in both sections, tightening near-duplicates and verbose phrasings.
-
-Scope is deliberately tight. It never creates `PROJECT.md` (hard-stops and points you at `/grimoire-init` if it is missing), never adds or renames sections, never edits anything outside `## Key Conventions / Constraints` and `## Notes`, and never touches `HISTORIC.md` or any page folder. This is the dual-writer contract with `grimoire-init` — see [GRIMOIRE-CONVENTIONS.md § Project context](GRIMOIRE-CONVENTIONS.md#-project-context) for the full split.
-
-The proposed `PROJECT.md` is presented for review via the IDE-aware pause-point: the file is written to disk so your editor renders the diff, and only after explicit approval does the skill make a single atomic commit (`docs(grimoire): refine project context`) touching only `.grimoire/PROJECT.md`. Orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-know` and `grimoire-update`).
-
-### /grimoire-deps
-
-Dependency audit and update. You optionally scope it to a single package or one ecosystem (`/grimoire-deps "express"`); empty audits everything it detects across npm/pnpm/yarn, pip/poetry/uv, composer, cargo, and go mod (other ecosystems best-effort). A read-only audit sub-agent scores every dependency on four axes — **security** (native audit tooling cross-checked against the GitHub Advisory Database / OSV for CVEs), **semver risk** (patch/minor/major jump), **maturity** (target releases younger than 14 days are flagged *"deixar maturar"*), and **reputation** (web search for hijacked / compromised / deprecated packages, e.g. the Tanstack and Laravel-lang incidents).
-
-It then presents a ranked, most-urgent-first markdown report — IDE-aware, with a best-effort-heuristics disclaimer (a "clean" row is never a security guarantee) — and you select which updates to apply by replying against the report (so it scales to long lists). An apply sub-agent bumps the selected safe updates **one at a time**, each gated by the project's broader build/test/lint (a conscious exception to the filter-only TDD rule, since a bump has global blast radius): on pass it makes one atomic commit per dependency (`chore(deps): bump <pkg> to <ver>`), on fail it reverts just that bump and moves on. Breaking / high-risk upgrades are never executed here — they become an upgrade brief that hands off to `/grimoire-spec`.
-
-Orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-know`, `grimoire-update`, and `grimoire-note`): it writes no page, no `HISTORIC.md`, and no `PROJECT.md` — only the dependency bumps it commits.
+**Phase 2** builds the page dependency graph (the pages' `depends-on`, or an implicit chain in list order when no page has any), runs it in waves with up to `[run].page_parallelism` pages at a time (default 2), and takes each page through the same protocol as `/grimoire-execute` — dependent pages get **stacked PRs**; it never waits for a merge. A blocked page skips its dependents while independent pages continue; a timed-out or crashed sub-agent gets one retry. Progress is kept in a ledger, `.grimoire/bag/runs/<construct>-<epoch>.md`; invoking the skill again resumes an unfinished run (`▶ Resuming run <id>`) without re-interviewing. It ends with a table of every page — PR, state, merge order, and where its human-validation steps are.
 
 ### /grimoire-construct
 
-Authoring skill for a **construct** — a larger-than-a-page objective. You hand it the objective in free text (usually the handoff brief that `/grimoire-spec` wrote when it judged a request too big); it researches in sub-agents, interviews you about anything it cannot infer, resolves the construct number `NNN` against `.grimoire/constructs/` (an independent counter that does not collide with page numbers), and — after draft review — writes `.grimoire/constructs/NNN-<name>/` containing a `CONSTRUCT.md` and an ordered `references/N-<name>.md` folder. Each reference is a page-sized seed in execution order.
-
-The construct is the roadmap-of-record, **self-contained**: it has no nested sub-constructs and never gets a `HISTORIC.md` entry — only the pages it later spawns do. `grimoire-construct` writes no page, no `HISTORIC.md`, and no `PROJECT.md`, and ends with a single `docs(grimoire): construct <name>` commit. Orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-know`, `grimoire-update`, `grimoire-note`, and `grimoire-deps`).
+For objectives too big for one page — usually fed the handoff brief written by `/grimoire-spec`. Research sub-agents decompose the objective into an ordered list of **page-sized references**, with `depends-on` wherever some are genuinely independent; you confirm the order and dependencies in an interview and review the draft. On GitHub it creates a **milestone** (intro plus a numbered `## References` list) and **one issue per reference right away**, labelled `grimoire:reference` — each issue number is the future page number. Locally it writes `.grimoire/constructs/NNN-<name>/` with `CONSTRUCT.md` and `references/N-<short-name>.md`. It deletes the brief once done and commits nothing. Next: `/grimoire-spec <m>` (one reference at a time) or `/grimoire-run <m>` (all of them).
 
 ### /grimoire-construct-update
 
-The second authorized writer of construct files — the construct analog of `grimoire-note`. You give it a construct number or `<name>` plus the change you want, and it alters that **existing** construct in place. It hard-stops if the target construct does not exist (`❌ Construct NNN não existe. Rode /grimoire-construct primeiro.`); it never creates a construct or a page.
+Alters an existing construct in place: add, remove, or reorder references in the pending tail, rewrite a pending reference's seed, rewrite the intro, or rename the construct. It hard-stops when the construct does not exist (`❌ Construct N does not exist. Run /grimoire-construct first.`). References already specified form a **locked prefix**: editing, removing, or reordering one — or inserting ahead of one — is refused with a message naming the reference and its page. On GitHub a removed reference leaves the milestone, gets `grimoire:dropped`, and is closed; issue numbers never change, only the order. Locally the pending tail is renumbered contiguously and the folder is backed up until you approve. Commits nothing.
 
-There are four operation families: **add / remove / reorder** references in the `[pending]` tail, **refine** a `[pending]` reference's detail, **rewrite** the construct intro/objective, and **rename** the construct (preserving `NNN` via `git mv`). The safety rule is the **locked `[specced]` prefix**: any reference that `/grimoire-spec` already consumed is immutable — editing, removing, reordering it, or inserting ahead of it is refused, and the refusal names the reference and its page backlink (`❌ Reference 2 já foi especificada (page 007) — não pode ser editada, removida ou reordenada.`). After any structural change to the pending tail it renumbers that tail contiguously in execution order; the locked prefix never moves.
+### /grimoire-adopt
 
-It researches in sub-agents only when an add/edit needs grounding, interviews you to fix the exact operation set, and pauses for draft review before writing. It writes no page, no `HISTORIC.md`, and no `PROJECT.md`, and ends with a single `docs(grimoire): update construct <name>` commit. Orthogonal to the Spec → Plan → Execute pipeline (same family as `grimoire-construct`, `grimoire-know`, `grimoire-update`, `grimoire-note`, and `grimoire-deps`).
+Brings pre-existing GitHub work under Grimoire — **GitHub backend only**. Give it an issue (`42` / `#42`) or a milestone (`milestone 3`, `m3`, or its exact title); it refuses closed or already-managed objects. A research sub-agent analyzes the code against it, then it interviews you to sharpen scope and acceptance criteria and, for a milestone, the order, dependencies, gaps, and issues too large or too small. After review:
+- an **issue** becomes a page: SPEC sections, label `grimoire:spec`, the original text kept under a collapsed `Original issue text` block;
+- a **milestone** becomes a construct in place: its issues become references (original text preserved), gaps become new reference issues, and the original description is kept under `Original milestone description`. An absorbed issue only leaves the milestone — Grimoire never closes your issues.
 
-## Constructs: objectives too big for one page
+An issue too large for one page gets the same construct recommendation as `/grimoire-spec`. Commits nothing.
 
-A page is the right size for a single feature or fix. Some objectives are bigger — a greenfield project from zero, or a feature that would otherwise sprawl across an unmanageable spec. For those, Grimoire offers the **construct**: a flat, ordered list of reference-seeds that you expand into real pages one at a time.
+### /grimoire-quick
 
-The flow is:
+For small fixes that do not deserve a page. If the request is too large it stops and points you to `/grimoire-spec`. Otherwise it resolves any remaining ambiguity, shows a step-by-step plan, and waits for your explicit authorization; then one sub-agent implements it test-first with atomic commits **on your current branch** — no page, no worktree, no PR.
 
-1. **Recommend.** You run `/grimoire-spec "<big objective>"`. After analyzing the request, `grimoire-spec` judges it too large for one page and recommends a construct. On your approval it writes a handoff brief and STOPS — no page is created.
-2. **Decompose.** In a fresh, clean-context session you run `/grimoire-construct` with that brief. It researches, interviews you, and writes a `CONSTRUCT.md` with an ordered checklist of `[pending]` reference-seeds plus a `references/` detail file per seed.
-3. **Expand, one page at a time.** You run `/grimoire-spec <NNN>` (a bare construct number). It takes the next `[pending]` reference, runs the full spec interview seeded by it, produces a normal page (`SPEC.md`, `HISTORIC.md` entry naming the parent construct), and flips that reference to `[specced]` with a backlink to the new page. From there each page follows the usual `plan → execute` path. Repeat until every reference is `[specced]`.
+### /grimoire-know
 
-The construct never appears in `HISTORIC.md`; its progress is readable solely from `CONSTRUCT.md`. Consumption is strictly the next pending reference in order. See [GRIMOIRE-CONVENTIONS.md § Construct](GRIMOIRE-CONVENTIONS.md#-construct) for the full contract.
+Read-only Q&A about the repository or the application it builds. A read-only research sub-agent inspects only the files it needs and searches the web when the answer depends on facts outside the repo. The reply leads with the answer, lists anything uncertain, and ends with `References` when the web was used. It never writes files, never commits, and never touches `.grimoire/`, `docs/`, or GitHub objects.
+
+### /grimoire-note
+
+Folds a free-text note into the project context. The note is split into rules and each one is routed: **how code is written here** → `docs/conventions.md`; **how the Grimoire agents must behave here** → `PROJECT.md` `## Grimoire rules`; ambiguous ones are asked. Each rule is merged, rewritten, or generalized against what is already there in as few words as possible, and every run also consolidates the existing entries. It never adds sections, never touches other docs, and hard-stops when `PROJECT.md` is missing (`❌ .grimoire/PROJECT.md does not exist.` — run `/grimoire-init` first). After review: one commit, `docs(grimoire): refine project context`.
+
+### /grimoire-deps
+
+Audits the project's dependencies — npm / pnpm / yarn, pip / poetry / uv, composer, cargo, go mod (other ecosystems best-effort), optionally focused on one package or ecosystem. A read-only sub-agent scores each one on **security** (native audit tools cross-checked against advisory databases), **semver risk** (patch / minor / major), **maturity** (a target release younger than 14 days is flagged "let it mature"), and **reputation** (web search for hijacked, compromised, or deprecated packages). You get a ranked report — each row `apply`, `wait`, or `plan-migration`, with a disclaimer that these are heuristics, not guarantees — and reply with the updates to apply.
+
+A sub-agent then bumps them **one at a time**, each gated by the project's full `test_command` / `build_command` / `lint_command` (or `docs/development.md` when `[verify]` is absent): pass → one commit `chore(deps): bump <pkg> to <ver>`; fail → that bump is reverted and the next one continues. Breaking upgrades become an upgrade brief for `/grimoire-spec`. It never creates a page and never writes `docs/`, `PROJECT.md`, or `config.toml`.
+
+### /grimoire-update
+
+Reads the installed `VERSION` from the Grimoire home and the latest from GitHub; when they match it says so and stops. Otherwise it shows the changelog delta, asks for an explicit yes, and runs `sh "<home>/install.sh" --ref v<latest>` — which updates the home, re-copies the skills, refreshes the dependencies, and keeps your global `config.toml` — then asks you to start a new session. A development checkout gets `git pull` + `./install.sh` advice instead, and a home that is not a git clone gets the reinstall one-liner. It commits nothing in your project. On Codex the network access and writes outside the workspace may need your sandbox approval.
 
 ## How it works
 
-The five pipeline skills (`init`, `spec`, `plan`, `execute`, `quick`) compose into a single flow. `init` runs once per project; `spec → plan → execute` is the long-form path for everything that deserves a page; `quick` is the escape hatch for trivial work that does not.
+On GitHub, a construct is a milestone, references and pages are issues, plans and review verdicts are issue / PR comments, and every page ships as one pull request:
 
 ```mermaid
 flowchart TD
-    Init([/grimoire-init]):::ctx
-    Spec([/grimoire-spec])
-    Plan([/grimoire-plan])
-    Exec([/grimoire-execute])
-    Quick([/grimoire-quick]):::fast
-    Done([done])
-
-    Init -. baseline context .-> Spec
-    Init -. baseline context .-> Quick
-    Spec -->|"page [spec]"| Plan
-    Plan -->|"page [planned]"| Exec
-    Exec -->|"page [finished]"| Done
-
-    Quick -->|trivial fix| Done
-    Quick -. too big .-> Spec
-
-    classDef ctx fill:#eef,stroke:#88a
-    classDef fast fill:#efe,stroke:#8a8
+    C["/grimoire-construct or /grimoire-adopt"] --> M["Milestone + one issue per reference<br/>label grimoire:reference"]
+    M --> S["/grimoire-spec (interview with you)<br/>or /grimoire-run phase 1"]
+    Q["/grimoire-spec with a free-text request"] --> I
+    S --> I["Issue body = SPEC<br/>label grimoire:spec"]
+    I --> X["/grimoire-execute or /grimoire-run phase 2<br/>(plan comment, label grimoire:planned)"]
+    X --> W["Page worktree + branch grimoire/N-slug<br/>steps written test-first"]
+    W --> D["Draft PR"]
+    D --> R{"Reviewer: scope, ponytail-review,<br/>full test/build/lint, UI"}
+    R -->|changes-requested| F["Fixer commits and pushes"]
+    F --> R
+    R -->|approve| Y["gh pr ready + Human validation<br/>label grimoire:review"]
+    R -->|rounds exhausted| B["label grimoire:blocked + ⛔ comment"]
+    Y --> H["You review and merge"]
+    B -->|you reply, then /grimoire-execute N| X
 ```
 
-Every page in the long-form pipeline moves through three statuses recorded in `.grimoire/HISTORIC.md`. Skills hard-stop when invoked out of order — they never silently advance the state.
+The status of a page — a label on GitHub, `status:` frontmatter locally:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> spec : /grimoire-spec
-    spec --> planned : /grimoire-plan
-    planned --> finished : /grimoire-execute
-    finished --> [*]
+    [*] --> reference : /grimoire-construct
+    [*] --> spec : /grimoire-spec request
+    reference --> spec : /grimoire-spec construct number
+    spec --> planned : /grimoire-plan or auto-plan
+    planned --> review : reviewer approved, PR ready
+    planned --> blocked : rounds exhausted or step failed
+    blocked --> planned : resume with /grimoire-execute N
+    review --> [*] : you merge the PR
 ```
 
-A finished page folder ends up looking like this:
+`blocked` coexists with `grimoire:planned` on GitHub. `review` is where Grimoire stops: the merge (which closes the issue) is yours.
 
-```
-.grimoire/pages/001-add-user-auth-endpoint/
-├── SPEC.md          ← grimoire-spec
-├── 1-schema.md      ← grimoire-plan
-├── 2-endpoints.md   ← grimoire-plan
-└── 3-tests.md       ← grimoire-plan
+## Configuration
+
+Two TOML files, merged **key by key** over built-in defaults — built-in < global < project:
+
+| File | Scope | Written by |
+|---|---|---|
+| `~/.grimoire/config.toml` | Your personal defaults (models, efforts, parallelism) | The installer, once, from `config.example.toml`; never overwritten |
+| `.grimoire/config.toml` | The project — **committed** | `/grimoire-init` (`[verify]`, `[docs]`); hand-editable |
+
+A broken or unknown value prints a one-line warning and falls back to the default — configuration never stops a skill. Each sub-agent runs under a **role**, resolved to the first hit in: project role → global role → project `default` → global `default` → built-in role. Built-in values:
+
+| Role | Used by | Claude Code | Codex |
+|---|---|---|---|
+| `session` | Notice only — the model you are advised to run the session with | `fable` / `max` | `gpt-6-astra` / `max` |
+| `default` | Any role not set in a file | `opus` / `high` | `gpt-6.1-sol` / `max` |
+| `research` | Read-only analysis in spec, construct, construct-update, adopt, know, deps audit | `fable` / `max` | `gpt-6-astra` / `max` |
+| `plan` | Auto-planner of execute / run | `fable` / `max` | `gpt-6-astra` / `max` |
+| `execute` | Step executors | `opus` / `high` | `gpt-6.1-sol` / `max` |
+| `fix` | Fixers of the review loop | `opus` / `high` | `gpt-6.1-sol` / `max` |
+| `review` | Reviewer | `opus` / `high` | `gpt-6.1-sol` / `max` |
+| `quick` | `/grimoire-quick` | `opus` / `high` | `gpt-6.1-sol` / `max` |
+| `deps` | `/grimoire-deps` apply | `opus` / `high` | `gpt-6.1-sol` / `max` |
+
+Models: `fable`, `opus`, `sonnet`, `haiku` on Claude Code; `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-luna` on Codex (newer ids pass through). Efforts: `low`, `medium`, `high`, `xhigh`, `max`.
+
+An excerpt of `config.example.toml`:
+
+```toml
+[agents.claude]
+default  = { model = "opus",  effort = "high" }
+research = { model = "fable", effort = "max" }
+
+[run]
+page_parallelism = 2            # 0 = unlimited
+step_timeout_minutes = 45
+review_timeout_minutes = 30
+
+[review]
+max_rounds = 3
+ui_globs = ["src/**/*.{tsx,jsx,vue,svelte,css,scss}", "app/**", "components/**", "pages/**"]
+
+[github]
+mode = "auto"                   # auto | on | off
+label_prefix = "grimoire"
+branch_prefix = "grimoire"
+
+# project file (.grimoire/config.toml):
+[verify]
+install_command = "pnpm install"
+dev_command = "pnpm dev --port {port}"     # {port} = a free port per page
+dev_url = "http://localhost:{port}"
+test_command = "pnpm test"
+build_command = "pnpm build"
+lint_command = "pnpm lint"
+
+[docs]
+dir = "docs"
+language = "en"
 ```
 
-Page numbers passed to `/grimoire-plan` and `/grimoire-execute` accept either bare integers (`1`, `42`) or zero-padded form (`001`, `042`). If a skill is invoked out of order (plan before spec, execute before plan, or re-running a finished page), it hard-stops with a clear message naming the current state — it never silently fixes the state or runs another skill for you.
+`[github].mode = "auto"` picks the GitHub backend when `origin` is on `github.com` and `gh auth status` succeeds; `on` requires it, `off` forces local mode. With the `{port}` placeholder pages are reviewed in a browser in parallel; without it UI reviews are serialized.
+
+## Local mode
+
+Without a GitHub remote or an authenticated `gh` — or with `[github].mode = "off"` — the same skills keep the same objects as **git-ignored** files under `.grimoire/`: a page is `.grimoire/pages/NNN-<slug>/` (`SPEC.md`, `PLAN.md`, step files, `REVIEW.md`, and an optional `NOTES.md` where you leave comments for a resume), a construct is `.grimoire/constructs/NNN-<name>/` (`CONSTRUCT.md` + `references/`), and status lives in their `status:` frontmatter. `/grimoire-execute` still works on a `grimoire/NNN-<slug>` branch in its own worktree and pushes it when a remote exists, but opens **no PR**: the verdict and the human-validation steps go to the page's `REVIEW.md`, and you merge the branch yourself. `/grimoire-adopt` is GitHub-only.
 
 ## Conventions
 
-The pipeline skills (`init`, `spec`, `plan`, `execute`, `quick`) share a single source of truth for the workflow rules — strict TDD, atomic Conventional Commits, sub-agent orchestration, the `.grimoire/pages/` layout, project context loading, and the `HISTORIC.md` recency log and status-of-record — in [GRIMOIRE-CONVENTIONS.md](GRIMOIRE-CONVENTIONS.md). `grimoire-update` is plugin self-maintenance, `grimoire-know` is read-only Q&A, and `grimoire-note` is a surgical `PROJECT.md` writer, so none of them participate in those rules.
+The load-bearing rules live in one place, [GRIMOIRE-CONVENTIONS.md](GRIMOIRE-CONVENTIONS.md); the skills reference its sections and never restate them:
 
-When a rule changes, it changes there once.
+- **§ TDD** — Red → Green → Refactor with filtered test runs; the review gate's full suite is the documented exception.
+- **§ Code comments** — comment the unusual, not the routine.
+- **§ Harness adaptation** — how each operation maps to Claude Code and to Codex; install location and the `${GRIMOIRE_HOME}` token.
+- **§ Sub-agent spawning** — the orchestrator never implements; the seven roles and who spawns them.
+- **§ Configuration** — the two config files, precedence, role lookup, the full schema.
+- **§ Skill composition** — how skills discover and use other installed skills as helpers.
+- **§ Parallel execution** — step `depends-on` / `touches`, waves, step worktrees, failure semantics.
+- **§ Commits** — Conventional Commits in English, code commits only, branch and PR rules.
+- **§ Backends** — GitHub vs. local, identifiers, markers, labels, plan / verdict comments, PR body, stacking, the `gh` commands.
+- **§ .grimoire/ layout** — what is committed (`PROJECT.md`, `config.toml`) and what is git-ignored; local status frontmatter.
+- **§ Documentation** — `docs/`, the `PROJECT.md` index, who writes them, the reading order, the 0.13 migration.
+- **§ Construct** — milestones and references, consumption order, alteration rules, the handoff brief.
+- **§ Review loop** — page worktree, resume mode, reviewer checks, verdict, fixer, outcome.
+- **§ Run** — `grimoire-run`: interviews, the autonomous boundary, page waves, ledger, resume, watchdog.
+- **§ IDE-aware review** — drafts opened in your editor instead of pasted in chat.
+- **§ User-facing language** — English sources, messages rendered in your language.
+- **§ Pause-point pattern** — every pause and hard-stop, with its literal message.
 
 ## Contributing
 
-Grimoire is young and opinionated, but every issue, PR, and bug report is genuinely welcome — especially edge cases, awkward error messages, and "this skill didn't do what I expected" stories. Open an issue or a PR; there is no contribution too small.
-
-For maintainer notes on editing the plugin itself, see [CLAUDE.md](CLAUDE.md).
+Grimoire is young and opinionated, but every issue, PR, and bug report is welcome — especially edge cases, awkward messages, and "this skill didn't do what I expected" stories. Maintainer notes are in [CLAUDE.md](CLAUDE.md) and [docs/](docs/development.md); run `bash scripts/test-install.sh` before sending installer changes.
 
 ## License
 
-[MIT](LICENSE) © Cezar Ferreira.
+[MIT](LICENSE) © Cezar Ferreira. The dependencies keep their own licenses (see [Dependencies](#dependencies)).
