@@ -35,7 +35,7 @@ Per `§ Pause-point pattern` (`grimoire-adopt`). STOP on the first failure with 
 - **Milestone:** title and description, then its issues — `gh issue list -m <n|title> -s all --json number,title,labels,state,body --limit 100` — and each issue's comments (`gh issue view <n> --json number,title,body,labels,milestone,state,comments`). Issues that already carry the page marker and closed issues are handled per `§ Backends` (Adoption) — raise them at the Phase 3 pause.
 
 **[Phase 2: Research]**
-Spawn a `research` sub-agent (`§ Sub-agent spawning`, `§ Harness adaptation` — `Explore` on Claude Code, instructed read-only on Codex) with the object's text and comments and the docs pointers of `[Required Reading]` step 2. It analyzes the codebase against the request and returns:
+Spawn a `research` sub-agent (`§ Sub-agent spawning`, `§ Harness adaptation` — `Explore` on Claude Code — no Edit / Write tools; shell use is instructed read-only, not enforced — instructed read-only on Codex) with the object's text and comments and the docs pointers of `[Required Reading]` step 2. It analyzes the codebase against the request and returns:
 - **issue:** the relevant code slice, reuse candidates, patterns to follow, constraints, a size signal, and draft content for the SPEC sections of `§ Backends` (page);
 - **milestone:** a mapping of the existing issues to page-sized references, the proposed execution order and `depends-on` (`§ Construct`), the **gaps** — references the objective needs that no issue covers — and issues too large or too small for one page;
 - always an explicit list of uncertainties. No invented facts — uncertainties become Phase 3 questions.
