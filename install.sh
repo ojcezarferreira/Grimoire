@@ -285,23 +285,49 @@ substitute_token() {
 	done || die "could not substitute $TOKEN in $1"
 }
 
+# The frontmatter `name:` of a SKILL.md (empty when absent).
+skill_name() {
+	sed -n 's/^name:[[:space:]]*//p' "$1" 2>/dev/null | head -n 1 | tr -d '\r' | sed 's/[[:space:]]*$//'
+}
+
+# The names of the skills this home ships, one per line.
+shipped_names() {
+	for f in "$1"/grimoire-*/SKILL.md; do
+		[ -f "$f" ] || continue
+		skill_name "$f"
+	done
+}
+
 install_skills() {
 	src="$home/skills"
 	value=$(native_path "$home")
-	if [ ! -d "$src" ] && [ "$opt_dry_run" -eq 0 ]; then
+	shipped=$(shipped_names "$src")
+	if [ -z "$shipped" ] && [ "$opt_dry_run" -eq 0 ]; then
 		die "no skills found in $src"
 	fi
 	for agent in $agents; do
 		target=$(skills_dir "$agent")
 		run mkdir -p "$target" || die "cannot create $target"
+		if [ -z "$shipped" ]; then
+			log "[dry-run] remove the installed Grimoire skills from $target"
+		fi
+		# only folders whose SKILL.md names a shipped skill: a user's own grimoire-* stays
 		for old in "$target"/grimoire-*; do
-			[ -d "$old" ] || continue
-			run rm -rf "$old" || die "cannot remove $old"
+			[ -d "$old" ] && [ -n "$shipped" ] || continue
+			old_name=$(skill_name "$old/SKILL.md")
+			if [ -n "$old_name" ] && printf '%s\n' "$shipped" | grep -qxF "$old_name"; then
+				run rm -rf "$old" || die "cannot remove $old"
+			else
+				warn "$old is not a Grimoire skill; leaving it in place"
+			fi
 		done
 		n=0
 		for dir in "$src"/grimoire-*/; do
 			[ -d "$dir" ] || continue
 			name=$(basename "$dir")
+			if [ "$opt_dry_run" -eq 0 ] && [ -e "$target/$name" ]; then
+				die "$target/$name is not a Grimoire skill; move it away and re-run"
+			fi
 			run cp -R "$src/$name" "$target/$name" || die "cannot copy $name to $target"
 			substitute_token "$target/$name" "$value"
 			n=$((n + 1))
