@@ -28,7 +28,7 @@ $ARGUMENTS
 - Decide upfront whether the sub-agent will need web search and URL fetches (the "fetch a URL" row of `§ Harness adaptation`: `WebFetch` on Claude Code, `curl -fsSL <url>` on Codex), so it can be briefed accordingly.
 
 **[Phase 2: Investigation]**
-- Spawn one `research` sub-agent per `§ Sub-agent spawning` — `Explore` on Claude Code (read-only enforced), instructed read-only on Codex (`§ Harness adaptation`) — with the model and effort of the `research` role (`§ Configuration`).
+- Spawn one `research` sub-agent per `§ Sub-agent spawning` — `Explore` on Claude Code (no Edit / Write tools; shell use is instructed read-only, not enforced), instructed read-only on Codex (`§ Harness adaptation`) — with the model and effort of the `research` role (`§ Configuration`).
 - Brief the sub-agent with a self-contained prompt that includes the user's question, the relevant files/dirs identified in Phase 1, the docs pointers of `[Required Reading]` step 2, and explicit instructions to:
   - Inspect only the files needed to answer the question.
   - Search the web and fetch pages — per the "fetch a URL" row of `§ Harness adaptation` (`WebFetch` on Claude Code, `curl -fsSL <url>` on Codex) — when the answer depends on facts outside the repo (third-party libs, standards, recent docs, API behavior).
