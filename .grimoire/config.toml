@@ -1,0 +1,10 @@
+# Grimoire project configuration (GRIMOIRE-CONVENTIONS.md § Configuration).
+# Merged key by key over the global ~/.grimoire/config.toml.
+
+[verify]
+test_command = "bash scripts/test-install.sh"
+lint_command = "sh -n install.sh"
+
+[docs]
+dir = "docs"
+language = "en"
