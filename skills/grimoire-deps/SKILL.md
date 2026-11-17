@@ -34,12 +34,12 @@ Audit the consuming project's dependencies along four axes (security, semver ris
 - If no recognizable ecosystem is found, tell the user that nothing auditable was detected and end.
 
 **[Phase 2: Audit]**
-- Spawn **one audit sub-agent** in the `research` role per `§ Sub-agent spawning` — `Explore` on Claude Code, instructed read-only on Codex (`§ Harness adaptation`) — with `Read`, `Grep`, `Glob`, read-only `Bash`, `WebSearch`, and `WebFetch`. The sub-agent must not mutate the project, must make no commits, and must not touch any `.grimoire/` file.
+- Spawn **one audit sub-agent** in the `research` role per `§ Sub-agent spawning` — `Explore` on Claude Code, instructed read-only on Codex (`§ Harness adaptation`) — with `Read`, `Grep`, `Glob`, read-only `Bash`, web search, and URL fetches per the "fetch a URL" row of `§ Harness adaptation` (`WebFetch` on Claude Code, `curl -fsSL <url>` on Codex). The sub-agent must not mutate the project, must make no commits, and must not touch any `.grimoire/` file.
 - Brief it with a self-contained prompt naming the detected ecosystems, the focus filter (if any), and instructions to score **each dependency** on these four axes:
   - **Security** — run the ecosystem's native audit tool (`npm audit` / `pnpm audit` / `yarn audit`, `pip-audit`, `composer audit`, `cargo audit`, `govulncheck` or `osv-scanner`, …) and cross-check the reported CVEs / advisories against the GitHub Advisory Database and OSV.
   - **Semver risk** — classify the jump from the currently-installed version to the latest acceptable version as **patch**, **minor**, or **major**.
   - **Maturity ("baking time")** — determine the target release's age. **Flag any target release younger than 14 days as *"let it mature"*.** The 14-day threshold is a fixed constant for this skill — there is no argument or config knob.
-  - **Reputation / controversy** — search the web (`WebSearch` / `WebFetch`) for supply-chain red flags: hijacked / compromised / malware-injected / deprecated packages. The motivating class of incident is the recent **Tanstack** and **Laravel-lang** package hijacks — treat those as the kind of signal worth surfacing.
+  - **Reputation / controversy** — search the web and fetch the relevant pages (the "fetch a URL" row of `§ Harness adaptation`) for supply-chain red flags: hijacked / compromised / malware-injected / deprecated packages. The motivating class of incident is the recent **Tanstack** and **Laravel-lang** package hijacks — treat those as the kind of signal worth surfacing.
   - The sub-agent must return **structured rows** (one per dependency, carrying the four-axis findings and the consulted URLs) plus an **explicit list of anything it was uncertain about**.
 
 **[Phase 3: Ranked report & selection]**
@@ -49,14 +49,14 @@ Audit the consuming project's dependencies along four axes (security, semver ris
 
   Each row's **Recommendation** is one of: **apply** (safe, low-risk), **wait** (e.g. too fresh — *"let it mature"* — or an unresolved reputation flag), or **plan-migration** (breaking / high-risk — routed to `/grimoire-spec`).
 - Surface the report via `§ IDE-aware review`:
-  - **IDE detected:** write the report to a throwaway draft under `.grimoire/bag/drafts/` (create the folder if needed; generate `<epoch>` with `date +%s` and memorize the path) so the IDE renders it, and tell the user in one short line that the report is open in the editor.
+  - **IDE detected:** write the report to the throwaway draft `.grimoire/bag/drafts/deps-report-<epoch>.md` (create the folder if needed; generate `<epoch>` with `date +%s` and memorize the path) so the IDE renders it, and tell the user in one short line that the report is open in the editor, e.g. `📄 Report opened at .grimoire/bag/drafts/deps-report-<epoch>.md — review it in the editor and reply with the updates to apply.`
   - **Terminal-only fallback:** print the table inline.
 - Include the **best-effort-heuristics disclaimer** in the report: reputation and maturity are advisory signals, not security guarantees; a "clean" row is not a guarantee of safety.
 - Append the audit sub-agent's **"uncertain about"** list when non-empty, and a **References** section listing the consulted URLs when the web was actually used.
 - PAUSE per `§ Pause-point pattern` (`grimoire-deps`: report pause): the user selects which updates to apply by **replying against the report** (e.g. by dependency name or row number). This reply-against-report model is deliberate so it scales to long dependency lists — never prompt per dependency. Wait for the user's selection before proceeding.
 
 **[Phase 4: Apply selected safe updates]**
-- Spawn an **apply sub-agent** in the `deps` role per `§ Sub-agent spawning`, with the model and effort of that role (`§ Configuration`). Process the user's selected low-risk updates **one at a time**, and for each:
+- Spawn an **apply sub-agent** in the `deps` role per `§ Sub-agent spawning`, with the model and effort of that role (`§ Configuration`); on Codex its prompt begins with `cd <repo root>` (sub-agents inherit no working directory — the Codex deltas of `§ Harness adaptation`). Process the user's selected low-risk updates **one at a time**, and for each:
   1. **Bump exactly one dependency** (edit the manifest and refresh the lockfile for that single package).
   2. **Run the project's broader verification gate — its test / build / lint: `[verify]` `test_command` / `build_command` / `lint_command` first, `docs/development.md` when `[verify]` is absent (`§ Configuration`) — NOT a filtered test run.** State inline to the sub-agent that this is a **conscious, documented exception** to `§ TDD`'s filter-only rule: a dependency bump has global blast radius, so a filtered run would not detect the regressions a bump can cause. This is by design, not a convention violation.
   3. **On pass:** make **one atomic Conventional Commit for that dependency** per `§ Commits`, e.g. `chore(deps): bump <pkg> to <ver>` (in English).
@@ -69,7 +69,7 @@ Audit the consuming project's dependencies along four axes (security, semver ris
 - Instruct the user to run `/grimoire-spec` to open a page from the brief. **This skill creates no page** — it only diagnoses and hands off.
 
 **[Phase 6: Cleanup]**
-- Delete every ephemeral draft written under `.grimoire/bag/drafts/` during this run (the Phase 3 report draft in IDE mode, and any Phase 5 upgrade brief). The applied dependency-bump commits stay; the drafts do not.
+- Delete every ephemeral draft written under `.grimoire/bag/drafts/` during this run (the Phase 3 `deps-report-<epoch>.md` in IDE mode, and any Phase 5 upgrade brief). The applied dependency-bump commits stay; the drafts do not.
 - If `.grimoire/PROJECT.md` was missing, remind the user that running `grimoire-init` once would enrich future runs.
 - End.
 
