@@ -27,7 +27,7 @@ Per `§ Review loop` (phase 1, hard-stops) and `§ Pause-point pattern` (`grimoi
    - Still a reference → `❌ Page N has not been specified yet. Run /grimoire-spec first.`
    - Local only — no `SPEC.md` → `❌ Page N has no SPEC.md. Run /grimoire-spec first.`
    - In `review` → GitHub: `❌ Page N is already pending human review (PR #X).` — local: `❌ Page N is already pending human review (branch <branch>).`
-   - Closed → `❌ Page N has already been finished.`
+   - Closed (local: `status: done`) → `❌ Page N has already been finished.`
 3. **Check the page's `depends-on`** (page-marker header / `SPEC.md` frontmatter). For each dependency `M`:
    - never executed (`spec` / `planned`, no branch) → `❌ Page N depends on #M, which has not been executed yet. Run /grimoire-execute M first (or /grimoire-run <construct>).`
    - `blocked` → `❌ Page N depends on #M, which is blocked. Resume it with /grimoire-execute M first.`
