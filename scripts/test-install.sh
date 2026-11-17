@@ -132,6 +132,20 @@ check "--agent codex exits 0" test $? -eq 0
 check "--agent codex installs into .agents/skills" has_all_skills "$T/.agents/skills"
 check "--agent codex leaves .claude untouched" test ! -e "$T/.claude/skills"
 
+# --- a foreign grimoire-* folder survives; a stale shipped one is replaced ---
+T=$(new_home foreign-skill)
+mkdir -p "$T/.claude/skills/grimoire-foo" "$T/.claude/skills/grimoire-spec"
+printf -- '---\nname: grimoire-foo\n---\nmine\n' >"$T/.claude/skills/grimoire-foo/SKILL.md"
+printf -- '---\nname: grimoire-spec\n---\nold\n' >"$T/.claude/skills/grimoire-spec/SKILL.md"
+printf 'stale\n' >"$T/.claude/skills/grimoire-spec/stale.txt"
+with_home "$T" sh ./install.sh --no-deps --agent claude
+check "foreign grimoire-foo: install exits 0" test $? -eq 0
+check "foreign grimoire-foo: left in place" grep -q '^mine$' "$T/.claude/skills/grimoire-foo/SKILL.md"
+check "foreign grimoire-foo: warned about" grep -q "warning: .*grimoire-foo is not a Grimoire skill" "$LOG"
+check "foreign grimoire-foo: shipped skills installed alongside it" \
+	test "$(count_skills "$T/.claude/skills")" -eq $((EXPECTED + 1))
+check "stale shipped skill folder is replaced" test ! -e "$T/.claude/skills/grimoire-spec/stale.txt"
+
 # --- fixture: token substitution in a path with a space and '&' ------------
 FIX="$ROOT/src dir & co"
 mkdir -p "$FIX"
@@ -195,6 +209,16 @@ check "remote --uninstall --purge exits 0" test $? -eq 0
 check "remote --uninstall empties both skill dirs" \
 	test "$(count_skills "$T/.claude/skills")" -eq 0 -a "$(count_skills "$T/.agents/skills")" -eq 0
 check "remote --purge deletes the home" test ! -e "$T/.grimoire"
+
+# --- the documented self-deleting uninstall: the home's own install.sh -------
+T=$(new_home self-purge)
+with_home "$T" env GRIMOIRE_REPO="$REPO" sh -s -- --no-deps --ref "$ref" <install.sh
+check "self-purge: managed clone installed (exit 0)" test $? -eq 0
+with_home "$T" sh "$T/.grimoire/install.sh" --uninstall --purge
+check "self-purge: sh ~/.grimoire/install.sh --uninstall --purge exits 0" test $? -eq 0
+check "self-purge: the home is gone" test ! -e "$T/.grimoire"
+check "self-purge: skills removed from both dirs" \
+	test "$(count_skills "$T/.claude/skills")" -eq 0 -a "$(count_skills "$T/.agents/skills")" -eq 0
 
 # --- --purge only deletes a managed clone ------------------------------------
 # (a throwaway clone stands in for a dev checkout: the real one is never at risk)
