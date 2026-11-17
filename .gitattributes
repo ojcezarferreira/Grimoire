@@ -1,0 +1,2 @@
+# Shell scripts keep LF on every checkout: dash and macOS sh reject CRLF.
+*.sh text eol=lf
