@@ -8,7 +8,7 @@ argument-hint: Task/fix description
 1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ TDD`, `§ Code comments`, `§ Sub-agent spawning` (the `quick` role), `§ Harness adaptation`, `§ Configuration`, `§ Documentation` (read-only consumption), `§ Skill composition`, `§ Commits`, `§ IDE-aware review`, `§ User-facing language`, `§ Pause-point pattern`. **Not applicable:** `§ Backends`, `§ .grimoire/ layout` (pages), `§ Construct`, `§ Parallel execution`, `§ Review loop`, `§ Run`. **Note:** quick is fully ephemeral — it never creates a page (no issue, no page folder), and its commits land on the user's current branch (no page branch, no worktree, no PR). The only file it may touch outside the actual fix is the ephemeral plan draft at `.grimoire/bag/drafts/quick-plan-<epoch>.md` in IDE mode (`§ IDE-aware review`), removed before the skill ends.
 2. Read `.grimoire/PROJECT.md` (the index), then `docs/conventions.md` and any other linked doc the fix touches. Missing `PROJECT.md` → proceed without it and suggest `grimoire-init` once this task is complete (non-blocking, `§ Documentation`).
 3. Read `.grimoire/config.toml` and `${GRIMOIRE_HOME}/config.toml` per `§ Configuration` (including the one-line `session` notice) — the `quick` role's model and effort.
-4. Backend detection (`§ Backends`) is skipped — this skill never reads or writes pages or constructs.
+4. Backend detection is skipped per `§ Backends` (who detects) — this skill never reads or writes pages, constructs, or PRs.
 
 **[Objective]**
 I need you to quickly resolve the following minor adjustment or bug fix:
