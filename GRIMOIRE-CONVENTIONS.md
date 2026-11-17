@@ -305,6 +305,8 @@ The invocation syntax is identical on both backends; what a number resolves to d
 
 - `grimoire-spec <number>` = consume the next reference of that construct; `grimoire-plan <number>` / `grimoire-execute <number>` = a page; `grimoire-run <number|title>` = a construct; `grimoire-adopt 42` / `#42` = an issue and `grimoire-adopt milestone 3` / `m3` / `<title>` = a milestone (GitHub only).
 - In operator-facing messages `N` is rendered as the identifier of the backend in use: `#42` on GitHub, `042` locally.
+- **Page slug (GitHub).** A page's `<slug>` is derived from the issue title at first use — lowercase; every run of non-alphanumerics → `-`; repeats collapsed; leading / trailing `-` trimmed; at most 40 characters — and names the branch `grimoire/<N>-<slug>` and the cache folder `.grimoire/pages/<N>-<slug>/`. Every later lookup (resume detection, run ledger, PR lookup) matches by the prefix `grimoire/<N>-*` / `.grimoire/pages/<N>-*`, so a later title edit is harmless.
+- **Unmanaged issues.** An existing issue whose body lacks the page marker is not a page: `grimoire-plan` and `grimoire-execute` hard-stop and point at `grimoire-adopt` (`§ Pause-point pattern`).
 - **No state commits in any backend** (`§ Commits`): the consuming repository receives code commits and the `grimoire-init` / `grimoire-note` documentation commits only.
 
 ### GitHub state model
@@ -390,7 +392,7 @@ Closes #N
 - Labels: `gh label create <name> --color <hex> --description "<d>" --force` · block `gh issue edit <n> --add-label grimoire:blocked` · unblock `gh issue edit <n> --remove-label grimoire:blocked`
 - Run resume only (`§ Run`): `gh pr close <n>` · `git push origin --delete <branch>`
 
-**Local cache (GitHub mode).** `.grimoire/pages/<issue>-<slug>/K-<step>.md` is a git-ignored cache of the plan comment: `grimoire-execute` re-materializes the step files from the latest plan comment when they are absent (switching machines), and the plan comment always wins over a stale cache. The SPEC is **not** cached — it is read from the issue every time.
+**Local cache (GitHub mode).** `.grimoire/pages/<issue>-<slug>/K-<step>.md` is a git-ignored cache of the plan comment, written by `grimoire-plan` / the auto-planner together with the comment: `grimoire-execute` re-materializes the step files from the latest plan comment when they are absent (switching machines), and the plan comment always wins over a stale cache. The SPEC is **not** cached — it is read from the issue every time.
 
 ---
 
@@ -410,10 +412,12 @@ Every feature, change, or alteration tracked by Grimoire is a **page**; a larger
 
 **Page folder** (local mode; plan cache in GitHub mode).
 - Path: `.grimoire/pages/NNN-<slug>/` locally — `NNN` is incremental and chronological across the whole project (`001`, `002`, `003`, …), scanned from `.grimoire/pages/`; `.grimoire/pages/<issue>-<slug>/` in GitHub mode (cache only, `§ Backends`).
-- Created by `grimoire-spec` (local) when the page is first specified, or by `grimoire-execute` when re-materializing the cache (GitHub). `grimoire-plan` and `grimoire-execute` never create a *page* — they look an existing one up by number.
+- Created by `grimoire-spec` (local) when the page is first specified; in GitHub mode (cache only) by `grimoire-plan` / the auto-planner when they write the plan, or by `grimoire-execute` when re-materializing the cache. `grimoire-plan` and `grimoire-execute` never create a *page* — they look an existing one up by number.
 - `SPEC.md` — the page specification (Context, Goals, Non-goals, Scope, Acceptance criteria, Constraints, Open questions, References to code). Written by `grimoire-spec`, consumed by `grimoire-plan` / the auto-planner. Local mode only — on GitHub the SPEC is the issue body and is never cached.
-- `K-<step>.md` — sequential, page-scoped step files `1-<step>.md`, `2-<step>.md`, … Written by `grimoire-plan` or the auto-planner (local), or re-materialized from the plan comment (GitHub). A simple page has one step file; a larger page has several — the planner chooses the count by projected context lucidity per step. Step files MAY carry YAML frontmatter per `§ Parallel execution`.
+- `K-<step>.md` — sequential, page-scoped step files `1-<step>.md`, `2-<step>.md`, … Written by `grimoire-plan` or the auto-planner in both modes — locally the plan of record; on GitHub the cache `.grimoire/pages/<N>-<slug>/K-<step>.md` of the plan comment, which `grimoire-execute` re-materializes when absent. A simple page has one step file; a larger page has several — the planner chooses the count by projected context lucidity per step. Step files MAY carry YAML frontmatter per `§ Parallel execution`.
 - `REVIEW.md` — local mode only: the verdict + `## Human validation`, written by the `§ Review loop` where GitHub mode posts a verdict comment and fills the PR body.
+- `PLAN.md` — local mode only: the counterpart of the plan comment — the marker line `<!-- grimoire:plan v=1 -->`, `## Assumptions`, and a one-line overview per step (the `K-<step>.md` files remain the executable units). Written by `grimoire-plan` and the auto-planner.
+- `NOTES.md` — local mode only, optional: free-form human notes, the counterpart of issue / PR comments. `grimoire-execute` reads the whole file on resume (`§ Review loop`); only the human writes or clears it.
 - The folder, its `SPEC.md`, and its step files stay in place after execution. **Nothing is moved; nothing is committed.**
 
 **Status frontmatter (local mode)** — the first lines of each file; it is the status-of-record:
@@ -427,6 +431,7 @@ depends-on: [NNN, …]            # optional — pages this page depends on
 branch: grimoire/NNN-<slug>     # set by grimoire-execute
 base: <branch>                  # set by grimoire-execute — the base the page branch was created from (§ Backends)
 pr: <url>                       # optional
+phase: steps | review           # set by grimoire-execute — steps when the page branch is created, review when review round 1 starts
 ---
 
 CONSTRUCT.md
@@ -442,9 +447,9 @@ depends-on: [N, …]              # optional — earlier references (lower numbe
 ---
 ```
 
-- `status` on `SPEC.md` progresses `spec` → `planned` → `review`; `blocked` is the stop state the `§ Review loop` sets when rounds are exhausted or the execution failed (a resume takes it back to `planned` and into the loop). `review` is **terminal** locally — there is no merge detection.
+- `status` on `SPEC.md` progresses `spec` → `planned` → `review`; `blocked` is the stop state the `§ Review loop` sets when rounds are exhausted or the execution failed (a resume takes it back to `planned` and into the loop). `review` is **terminal** locally — there is no merge detection. `phase` is the local analog of "a draft PR exists" in resume mode (`§ Review loop`): `phase: review` = the steps are done.
 - `CONSTRUCT.md` `status: done` means **no reference is `pending`**. It is written by `grimoire-spec` in the same write as the last reference flip (consumption of the last pending reference — `§ Construct`). There is no GitHub equivalent: the milestone is closed by the human.
-- Writers of frontmatter: `grimoire-spec` (`status: spec`, `construct`, `depends-on`), `grimoire-plan` / the auto-planner (`planned`), `grimoire-execute` / `grimoire-run` (`branch`, `base`, `pr`, `review`, `blocked`), `grimoire-construct` / `grimoire-construct-update` (construct and reference files), `grimoire-spec` (`specced`, `page`, and the derived `CONSTRUCT.md` `status: done`).
+- Writers of frontmatter: `grimoire-spec` (`status: spec`, `construct`, `depends-on`), `grimoire-plan` / the auto-planner (`planned`), `grimoire-execute` / `grimoire-run` (`branch`, `base`, `pr`, `phase`, `review`, `blocked`), `grimoire-construct` / `grimoire-construct-update` (construct and reference files), `grimoire-spec` (`specced`, `page`, and the derived `CONSTRUCT.md` `status: done`).
 - **Legacy pages (0.13) without frontmatter.** Skills infer the status from the files present — only `SPEC.md` → `spec`; step files → `planned`; `REVIEW.md` → `review` — and stamp the frontmatter on their first write to the file. The migration run by `grimoire-init` (`§ Documentation`) stamps every legacy page and construct in one batch.
 
 **Construct folder (local mode).** `.grimoire/constructs/NNN-<name>/` with `CONSTRUCT.md` at the root plus `references/N-<short-name>.md` in execution order. `NNN` is an **independent incremental counter** scanned from `.grimoire/constructs/` — it does not share or collide with the `pages/` counter. Full rules in `§ Construct`.
@@ -587,21 +592,21 @@ This section is the **single source of truth** for how a page is executed and re
 
 ### Hard-stops
 
-After backend detection and configuration (`§ Pause-point pattern` holds the literal messages): page not found; page still a `reference` (never specified); page already in `review` (PR pending human review); page closed (finished); a `depends-on` page that has never been executed — `spec` / `planned` with no branch; a `depends-on` page that is `blocked` (the human resumes it first); a cyclic or dangling step `depends-on`. A `blocked` page is **not** a hard-stop: it proceeds in resume mode, announced.
+After backend detection and configuration (`§ Pause-point pattern` holds the literal messages): page not found; an issue without the page marker (not managed by Grimoire); page still a `reference` (never specified); page already in `review` (PR pending human review); page closed (finished); a `depends-on` page that has never been executed — `spec` / `planned` with no branch; a `depends-on` page that is `blocked` (the human resumes it first); a cyclic or dangling step `depends-on`. A `blocked` page is **not** a hard-stop: it proceeds in resume mode, announced.
 
 ### Resume mode
 
 Resume applies whenever the page branch `grimoire/<N>-<slug>` already exists — the page is `blocked`, a previous execution was interrupted, or the work was started on another machine. It announces `▶ Resuming page N on existing branch <branch>` and:
 - reuses the existing branch and draft PR; a plan already posted is **not** re-planned;
-- reads the **human comments on the issue and on the PR newer than the last Grimoire-authored comment** (a verdict or a `⛔` comment; when there is none, every human comment since the plan comment) and hands them to the fixer and to the reviewer; when there are unresolved blocking findings or new comments, the round starts with the **fixer**;
+- reads the **human comments on the issue and on the PR newer than the last Grimoire-authored comment** (a verdict or a `⛔` comment; when there is none, every human comment since the plan comment) and hands them to the fixer and to the reviewer — locally the whole `NOTES.md` of the page folder plays that role, and the plan's `## Assumptions` come from `PLAN.md` (`§ .grimoire/ layout`); when there are unresolved blocking findings or new comments, the round starts with the **fixer**;
 - restarts the review cycle at **round 1**;
 - removes `grimoire:blocked` (local: `status: blocked` → `planned`) when the round starts;
-- **never re-executes steps.** When the previous execution died in the middle of the steps and **no draft PR exists**, the page is re-executed from scratch **on the same branch**: the branch is reset to its base (`git reset --hard <base>`) and every step runs again — allowed because the branch was never marked ready. This is the only history rewrite `grimoire-execute` performs. With a draft PR present, the remaining work is driven by the review cycle (scope findings → fixer).
+- **never re-executes steps.** When the previous execution died in the middle of the steps and **no draft PR exists**, the page is re-executed from scratch **on the same branch**: the branch is reset to its base (`git reset --hard <base>`) and every step runs again — allowed because the branch was never marked ready. This is the only history rewrite `grimoire-execute` performs. With a draft PR present, the remaining work is driven by the review cycle (scope findings → fixer). Locally the analog of "a draft PR exists" is `SPEC.md` `phase: review`; `phase: steps` (or absent) with an existing branch means the execution died mid-steps → the reset-and-rerun rule above.
 
 ### Phases
 
 1. **Resolve.** Resolve the page; load the SPEC (issue body / `SPEC.md`), the plan (latest plan comment → local cache / local step files), the configuration, and — in resume — the new human comments.
-2. **Auto-plan**, when the page is in `spec` status: spawn a `plan` sub-agent (`§ Sub-agent spawning`) that plans **without an interview** — every unresolved choice goes into `## Assumptions`; the step DAG is validated (cycle / dangling check); `touches` overlap between parallel siblings becomes a note in the plan; the plan is posted as a plan comment (GitHub) or written as local step files; status → `planned`. A user who wants to steer the plan runs `/grimoire-plan <N>` beforehand.
+2. **Auto-plan**, when the page is in `spec` status: spawn a `plan` sub-agent (`§ Sub-agent spawning`) that plans **without an interview** — every unresolved choice goes into `## Assumptions`; the step DAG is validated (cycle / dangling check); `touches` overlap between parallel siblings becomes a note in the plan; the plan is posted as a plan comment (GitHub) or written as local step files + `PLAN.md`; status → `planned`. A user who wants to steer the plan runs `/grimoire-plan <N>` beforehand.
 3. **Branch / worktree.** Create the page branch from its base and the page worktree — or enter resume mode.
 4. **Steps** per `§ Parallel execution` (strict serial or waves), each step an `execute` sub-agent committing per `§ TDD` / `§ Commits`. After the **first step commit reaches the page branch**: `git push -u` and open the **draft PR** (body template in `§ Backends`). From this point on **no question is asked to the user**. A failed step follows the failure semantics of `§ Parallel execution`: within that execution the page never enters the review cycle with missing steps — it ends `blocked` (a later resume with a draft PR present completes the work through the review cycle, see resume mode).
 5. **Review cycle**, rounds `1..[review].max_rounds` (default 3) — below.
@@ -705,7 +710,7 @@ When a skill must show the user a draft, plan, or other markdown content for rev
 1. Write the reviewable content to disk so the IDE auto-surfaces it with markdown preview:
    - `grimoire-init` → `.grimoire/PROJECT.md`, the `docs/*` files it proposes, and `.grimoire/config.toml` (final destinations).
    - `grimoire-spec` → local mode: `.grimoire/pages/NNN-[page-name]/SPEC.md` (create the page folder first if needed — final destination); GitHub mode: `.grimoire/bag/drafts/spec-<epoch>.md` (throwaway — the approved text becomes the issue body).
-   - `grimoire-plan` → local mode: the step files in the page folder (final destination); GitHub mode: `.grimoire/bag/drafts/plan-<epoch>.md` (throwaway — the approved step files become the plan comment).
+   - `grimoire-plan` → local mode: `PLAN.md` and the step files in the page folder (final destination); GitHub mode: `.grimoire/bag/drafts/plan-<epoch>.md` (throwaway — the approved step files become the plan comment).
    - `grimoire-construct` / `grimoire-construct-update` → local mode: the construct files (final destination); GitHub mode: `.grimoire/bag/drafts/construct-<epoch>.md` (throwaway — becomes the milestone + reference issues, or the alteration).
    - `grimoire-adopt` → `.grimoire/bag/drafts/adopt-<epoch>.md` (throwaway — becomes the issue body / milestone description).
    - `grimoire-quick` → `.grimoire/bag/drafts/quick-plan-<epoch>.md` (create the folder if needed; this is a throwaway draft, not a final artifact).
@@ -719,6 +724,7 @@ When a skill must show the user a draft, plan, or other markdown content for rev
    - throwaway drafts (`grimoire-quick`, `grimoire-update`, and the `spec` / `plan` / `construct` / `adopt` drafts): perform the write the draft stood for (issue, comment, milestone — nothing for `quick` / `update`), then delete the draft file from `.grimoire/bag/drafts/` and proceed. **Every throwaway draft is deleted after use.**
 5. On requested edits: edit the file in place and re-pause.
 6. On abandonment: every skill deletes whatever its draft created — the throwaway draft and any final-destination files (spec, plan, construct, adopt, init alike), since they were never approved — leaving an uncommitted, unapproved file pollutes the repo.
+7. **In-place edits of existing git-ignored files** (local `grimoire-construct-update`): git cannot restore them, so before the first edit back the folder up to `.grimoire/bag/drafts/construct-update-backup-<epoch>/`; on abandonment restore the folder from the backup (undoing any rename); on approval delete the backup.
 
 **Inline fallback (terminal-only).** When the IDE is not detected, paste the rendered draft inline in chat (legacy behavior). Pause semantics, approval gating, and downstream commit timing are identical to the IDE-aware flow.
 
@@ -765,6 +771,7 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
 **`grimoire-plan`**
 - **Precondition check (HARD STOP):** before doing anything else, resolve the page (`§ Backends`). STOP immediately with a clear message naming the current state and the skill the user should run instead if:
   - the page does not exist → `❌ Page N does not exist. Run /grimoire-spec first.`
+  - GitHub only — the issue exists but its body lacks the page marker (`§ Backends`) → `❌ Issue N is not managed by Grimoire. Run /grimoire-adopt N first.`
   - the page is still a reference (label `grimoire:reference`) → `❌ Page N has not been specified yet. Run /grimoire-spec first.`
   - local only — the page folder has no `SPEC.md` → `❌ Page N has no SPEC.md. Run /grimoire-spec first.`
   - the page is `planned` and its page branch already exists (execution started) → `❌ Page N is already being executed (branch <branch>).` A `planned` page with **no** branch yet MAY be re-planned: print a one-line notice, then post a new plan comment (GitHub) / rewrite the local step files.
@@ -777,6 +784,7 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
 **`grimoire-execute`**
 - **Precondition check (HARD STOP):** after backend detection and configuration, resolve the page. STOP immediately with a clear message if:
   - the page does not exist → `❌ Page N does not exist.`
+  - GitHub only — the issue exists but its body lacks the page marker (`§ Backends`) → `❌ Issue N is not managed by Grimoire. Run /grimoire-adopt N first.`
   - the page is still a reference → `❌ Page N has not been specified yet. Run /grimoire-spec first.`
   - local only — the page folder has no `SPEC.md` → `❌ Page N has no SPEC.md. Run /grimoire-spec first.`
   - the page is in `review` → `❌ Page N is already pending human review (PR #X).` — local rendering: `❌ Page N is already pending human review (branch <branch>).`
