@@ -1,2 +1,7 @@
 # Shell scripts keep LF on every checkout: dash and macOS sh reject CRLF.
 *.sh text eol=lf
+# Manifests and TOML keep LF too: install.sh parses deps.txt and VERSION, and
+# the example config is copied verbatim into place.
+deps.txt text eol=lf
+VERSION text eol=lf
+*.toml text eol=lf
