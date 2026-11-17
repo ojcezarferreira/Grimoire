@@ -1,5 +1,0 @@
-# HISTORIC
-
-1. **007-skill-composition** [finished] — Adds a new `§ Skill composition` convention so every Grimoire skill surveys the runtime's available-skills list and uses relevant helpers automatically: read-only/assistive helpers run with a one-line announcement, while write/side-effect/scope-changing helpers are gated by an explicit user ok (folded into existing pause-points). Excludes conflicting orchestrators, forbids helpers from owning `.grimoire/` state or overriding Grimoire contracts, wires the section into all 11 SKILL.md `[Required Reading]` blocks, and ships a version bump + CHANGELOG entry.
-
-2. **006-user-facing-language** [finished] — Normalizes every hardcoded operator-facing string in the plugin source from pt-BR to English (canonical translatable templates) and adds a new `§ User-facing language` convention: source strings are English, but every skill renders terminal communication in the user's native language (detected from session input, OS-locale fallback, English final fallback), preserving literal tokens. Wires the new section into all 11 SKILL.md `[Required Reading]` blocks and ships a version bump + CHANGELOG entry.
