@@ -4,11 +4,13 @@ description: Plan a page with Grimoire, interactively — reads the page SPEC (G
 argument-hint: Page number (e.g. 42)
 ---
 
+**Managed catalog bootstrap (agentes.chat, Grimoire 0.14.1).** Before Required Reading, read `AGENTES-CHAT.md` from the matching distribution, or from `https://raw.githubusercontent.com/ojcezarferreira/Grimoire/v0.14.1/AGENTES-CHAT.md` through the connector/public fetch. Follow its bootstrap when `${GRIMOIRE_HOME}` is unresolved: catalog import does not run the installer. On agentes.chat its transport, permissions, native construct dispatch and managed-update rules refine the CLI examples below. Outside agentes.chat, use the normal installed-home flow.
+
 **[Required Reading]** — in the order of `§ Documentation`:
 1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Backends` (identifiers, labels, plan-comment format, local cache, `gh` cheat sheet), `§ .grimoire/ layout` (page folder, step files, status frontmatter), `§ Parallel execution` (step frontmatter, DAG, waves), `§ TDD` and `§ Code comments` (the steps you write are executed under them), `§ Sub-agent spawning` (this skill plans **in the session** — the `plan` role is the auto-planner of `grimoire-execute`, not this skill), `§ Harness adaptation`, `§ Configuration`, `§ Documentation`, `§ Skill composition`, `§ Commits` (this skill commits **nothing**), `§ IDE-aware review`, `§ User-facing language`, `§ Pause-point pattern`. **Not applicable:** `§ Review loop`, `§ Run`, `§ Construct` — this skill never touches construct objects.
 2. Read `.grimoire/PROJECT.md` (the index), then `docs/conventions.md` and `docs/architecture.md`. Missing `PROJECT.md` → proceed without it and suggest `grimoire-init` at the end (non-blocking, `§ Documentation`).
 3. Read `.grimoire/config.toml` and `${GRIMOIRE_HOME}/config.toml` per `§ Configuration` (including the one-line `session` notice).
-4. Detect the backend per `§ Backends` and announce it (`🔗 Backend: GitHub (owner/repo)` / `📁 Backend: local`). `[github].mode = "on"` without auth → `❌ GitHub backend required but gh is not authenticated.` and STOP.
+4. Detect the backend per `§ Backends` and announce it (`🔗 Backend: GitHub (owner/repo)` / `📁 Backend: local`). Missing required GitHub access → stop per `§ Backends`; on agentes.chat a verified connector qualifies without `gh`. Resolve construct storage independently when this skill touches constructs.
 
 **[Objective]**
 Plan the implementation of the page identified by:

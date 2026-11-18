@@ -4,6 +4,8 @@ description: Surgically fold a free-text note into the project's context — eac
 argument-hint: Free-text note(s) to fold into docs/conventions.md or PROJECT.md's Grimoire rules
 ---
 
+**Managed catalog bootstrap (agentes.chat, Grimoire 0.14.1).** Before Required Reading, read `AGENTES-CHAT.md` from the matching distribution, or from `https://raw.githubusercontent.com/ojcezarferreira/Grimoire/v0.14.1/AGENTES-CHAT.md` through the connector/public fetch. Follow its bootstrap when `${GRIMOIRE_HOME}` is unresolved: catalog import does not run the installer. On agentes.chat its transport, permissions, native construct dispatch and managed-update rules refine the CLI examples below. Outside agentes.chat, use the normal installed-home flow.
+
 **[Required Reading]** — in the order of `§ Documentation`:
 1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Documentation` (the routing rule, the synthesis discipline, the dual-writer contract), `§ Configuration`, `§ Harness adaptation`, `§ Skill composition`, `§ Commits`, `§ IDE-aware review`, `§ User-facing language`, `§ Pause-point pattern`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Sub-agent spawning` (this skill spawns nothing), `§ Backends`, `§ .grimoire/ layout` (pages), `§ Construct`, `§ Parallel execution`, `§ Review loop`, `§ Run` — this skill is orthogonal to the page pipeline and never creates a page.
 2. `.grimoire/PROJECT.md` (the index) and `docs/conventions.md` are this skill's **targets** — read them in Phase 1, where the hard-stop is checked.

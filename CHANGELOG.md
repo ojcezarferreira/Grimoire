@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] — 2026-11-18
+
+### Added
+- Native agentes.chat construct storage, selected independently with `[constructs].backend = "agentes-chat"`: a Drive document owns order/membership, native board issues hold stable reference seeds, and typed backlinks connect normal GitHub/local pages. Creation, pending-tail alteration, `ac:<UUID>` spec consumption and run/resume include locked-prefix validation, dependency translation and partial-write reconciliation. Existing `auto` behavior and constructs are preserved.
+- `AGENTES-CHAT.md`: one managed-platform adapter for all thirteen skills, with release-pinned distribution bootstrap, catalog installation/updates, dependency/runtime checks, native tool mapping, visibility and approval handling.
+- Distribution/prompt contract checks and a behavioral acceptance matrix for managed rollout.
+
+### Fixed
+- GitHub backend detection accepts verified connector access without requiring `gh`; milestone capabilities are checked independently from issues/PRs. CLI examples map to equivalent connected operations.
+- Raw catalog imports resolve shared files without relying on installer token substitution, guessed homes or CLI skill directories; loaded skill and distribution versions must agree.
+- Managed updates use the skill catalog and published-release changelog, preserving project config and reporting pending proposals. Worktree exceptions, branch-prefix restrictions, shared dev runtimes and platform approvals remain explicit.
+
 ## [0.14.0] — 2026-11-17
 
 ### Added
@@ -151,6 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `grimoire-init` and `grimoire-quick` aligned with the Spec → Plan → Execute pipeline.
 - README and CLAUDE.md updated for the new pipeline.
 
+[0.14.1]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.14.1
 [0.14.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.14.0
 [0.13.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.13.0
 [0.12.0]: https://github.com/ojCezarFerreira/grimoire/releases/tag/v0.12.0

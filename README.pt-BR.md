@@ -23,6 +23,22 @@ O Grimoire é o oposto. Ele pergunta até **você** ter clareza do que quer, e a
 
 > Toda alteração rastreada pelo Grimoire é uma **page** — no GitHub, uma issue cujo corpo é a especificação e cujo trabalho é entregue como um único pull request. Um objetivo grande demais para uma page é um **construct** — um milestone cujas issues são **references** ordenadas, cada uma especificada depois como uma page.
 
+## agentes.chat
+
+Os bots gerenciados usam o catálogo do workspace, sem instalar pastas de skills do CLI. Importe/atualize as 13 entradas `skills/grimoire-*` pelo app; o bootstrap lê o adaptador e as convenções da mesma release e resolve importações em que `${GRIMOIRE_HOME}` não foi substituído. As auxiliares de `deps.txt` e o executável/runtime do navegador precisam de verificação separada. O [adaptador](AGENTES-CHAT.md) documenta ferramentas, dependências, permissões e atualização dos bots.
+
+O armazenamento dos constructs é independente do armazenamento das pages:
+
+```toml
+# .grimoire/config.toml
+[constructs]
+backend = "agentes-chat"
+```
+
+Cada construct é um documento nativo no Drive com a lista ordenada de references e uma tarefa do quadro por seed. Não exige milestone no GitHub. `/grimoire-spec ac:<UUID-do-documento>` expande a próxima reference numa page normal no GitHub/local; `/grimoire-run ac:<UUID-do-documento>` executa o mesmo pipeline, e `/grimoire-construct-update ac:<UUID-do-documento>` altera a cauda pendente. IDs estáveis, backlinks tipados das pages e reconciliação nas retomadas preservam a ordem e o prefixo travado. O compartilhamento segue a conversa, salvo autorização para outro público.
+
+O padrão `backend = "auto"` preserva os constructs GitHub/locais existentes; atualizar skills não os migra. Pages no GitHub podem usar o conector sem `gh`; o modo nativo atende conectores sem milestones. Os cartões do app continuam controlando publicação, envio para revisão, merge e deploy. A atualização gerenciada usa `update_skill_from_source` apenas nas entradas do Grimoire, sem executar `install.sh`; propostas pendentes são reportadas como pendentes.
+
 ## Instalação
 
 **macOS, Linux, Git Bash:**
@@ -49,7 +65,7 @@ cd grimoire
 ./install.sh            # Windows PowerShell: .\install.ps1 -- <flags>
 ```
 
-**Requisitos.** `git` (exceto no modo de desenvolvimento); Claude Code e/ou Codex — um agente é detectado quando `~/.claude` / `~/.codex` existe ou `claude` / `codex` está no `PATH`, e o instalador para quando nenhum é encontrado e nenhum `--agent` é passado; Node.js com `npx` / `npm` para as dependências (sem ele, elas são puladas com um aviso). Em tempo de execução, o backend GitHub precisa da CLI [`gh`](https://cli.github.com/) autenticada.
+**Requisitos.** `git` (exceto no modo de desenvolvimento); Claude Code e/ou Codex — um agente é detectado quando `~/.claude` / `~/.codex` existe ou `claude` / `codex` está no `PATH`, e o instalador para quando nenhum é encontrado e nenhum `--agent` é passado; Node.js com `npx` / `npm` para as dependências (sem ele, elas são puladas com um aviso). Em tempo de execução, o backend GitHub precisa de acesso autenticado ao repositório pela CLI [`gh`](https://cli.github.com/) ou por um conector GitHub com as operações necessárias. Operações de milestones são verificadas separadamente.
 
 **Codex.** O sandbox padrão `workspace-write` do Codex bloqueia a rede (necessária para `gh`, `git fetch`, `git push`) e mantém o `.git` somente leitura, então commits, `git worktree add` e a criação de branches falham. As skills que escrevem objetos no GitHub, fazem push, fazem commit ou criam branches e worktrees — `/grimoire-spec`, `/grimoire-plan`, `/grimoire-execute`, `/grimoire-run`, `/grimoire-adopt`, `/grimoire-construct`, `/grimoire-construct-update`, `/grimoire-init` (labels, commit da documentação), `/grimoire-note`, `/grimoire-quick`, `/grimoire-deps` (ao aplicar atualizações), `/grimoire-update` — precisam de acesso à rede mais um sandbox que permita escrever no `.git`, ou do Codex iniciado com `--dangerously-bypass-approvals-and-sandbox` / `-s danger-full-access`. Sem isso, as fases que não fazem perguntas viram pedidos de aprovação, ou a página termina `blocked`. Mesmo com o sandbox desligado, a revisão automática de aprovações do Codex pode recusar o `rm -rf` de uma pasta de worktree que sobrou depois de `git worktree remove --force` (`git worktree prune` e a conferência de `git worktree list` ainda vêm em seguida); nesse caso a execução informa o caminho exato dessa pasta para você apagar à mão, em vez de falhar. Só o acesso à rede é `-c sandbox_workspace_write.network_access=true`; para configurar em toda sessão:
 
@@ -313,6 +329,9 @@ review_timeout_minutes = 30
 max_rounds = 3
 ui_globs = ["src/**/*.{tsx,jsx,vue,svelte,css,scss}", "app/**", "components/**", "pages/**"]
 
+[constructs]
+backend = "auto"                # auto | github | local | agentes-chat
+
 [github]
 mode = "auto"                   # auto | on | off
 label_prefix = "grimoire"
@@ -332,11 +351,11 @@ branch_prefix = "grimoire"
 # language = "en"
 ```
 
-`[github].mode = "auto"` escolhe o backend GitHub quando o `origin` está no `github.com` e `gh auth status` dá certo; `on` exige o GitHub, `off` força o modo local. Com o placeholder `{port}` as pages são revisadas num navegador em paralelo; sem ele as revisões de UI são serializadas.
+`[github].mode = "auto"` escolhe o backend GitHub quando o `origin` está no `github.com` e o CLI autenticado ou conector consegue ler esse repositório; `on` exige o GitHub, `off` força o modo local. Com o placeholder `{port}` as pages são revisadas num navegador em paralelo; sem ele as revisões de UI são serializadas.
 
 ## Modo local
 
-Sem um remote no GitHub ou um `gh` autenticado — ou com `[github].mode = "off"` — as mesmas skills guardam os mesmos objetos como arquivos **ignorados pelo git** em `.grimoire/`: uma page é `.grimoire/pages/NNN-<slug>/` (`SPEC.md`, `PLAN.md`, arquivos de step, `REVIEW.md` e um `NOTES.md` opcional onde você deixa comentários para uma retomada), um construct é `.grimoire/constructs/NNN-<name>/` (`CONSTRUCT.md` + `references/`), e o status vive no frontmatter `status:` deles. O `/grimoire-execute` continua trabalhando numa branch `grimoire/NNN-<slug>` num worktree próprio e a envia quando existe um remote, mas **não abre PR**: o veredito e os passos de validação humana vão para o `REVIEW.md` da page, e você mesmo faz o merge da branch. O `/grimoire-adopt` é exclusivo do GitHub.
+Sem um remote no GitHub ou um transporte GitHub autenticado — ou com `[github].mode = "off"` — as mesmas skills guardam os mesmos objetos como arquivos **ignorados pelo git** em `.grimoire/`: uma page é `.grimoire/pages/NNN-<slug>/` (`SPEC.md`, `PLAN.md`, arquivos de step, `REVIEW.md` e um `NOTES.md` opcional onde você deixa comentários para uma retomada), um construct é `.grimoire/constructs/NNN-<name>/` (`CONSTRUCT.md` + `references/`), e o status vive no frontmatter `status:` deles. O `/grimoire-execute` continua trabalhando numa branch `grimoire/NNN-<slug>` num worktree próprio e a envia quando existe um remote, mas **não abre PR**: o veredito e os passos de validação humana vão para o `REVIEW.md` da page, e você mesmo faz o merge da branch. O `/grimoire-adopt` é exclusivo do GitHub.
 
 ## Convenções
 

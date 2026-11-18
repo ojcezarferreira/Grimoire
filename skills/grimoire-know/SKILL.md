@@ -4,11 +4,13 @@ description: Answer questions about the repository or its application — read-o
 argument-hint: Your question about the repo or the app
 ---
 
+**Managed catalog bootstrap (agentes.chat, Grimoire 0.14.1).** Before Required Reading, read `AGENTES-CHAT.md` from the matching distribution, or from `https://raw.githubusercontent.com/ojcezarferreira/Grimoire/v0.14.1/AGENTES-CHAT.md` through the connector/public fetch. Follow its bootstrap when `${GRIMOIRE_HOME}` is unresolved: catalog import does not run the installer. On agentes.chat its transport, permissions, native construct dispatch and managed-update rules refine the CLI examples below. Outside agentes.chat, use the normal installed-home flow.
+
 **[Required Reading]** — in the order of `§ Documentation`:
 1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Sub-agent spawning` (the `research` role), `§ Harness adaptation`, `§ Configuration`, `§ Documentation` (read-only consumption), `§ Skill composition`, `§ User-facing language`, `§ Pause-point pattern` (`grimoire-know` has no pause-points), and — read-only, when the question concerns Grimoire work — `§ Backends`, `§ .grimoire/ layout`, `§ Construct`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Commits` (this skill commits **nothing**), `§ IDE-aware review`, `§ Parallel execution`, `§ Review loop`, `§ Run` — this skill is pure Q&A: it never mutates the repo and creates no pages.
 2. Read `.grimoire/PROJECT.md` (the index), then `docs/conventions.md` and any other linked doc the question touches. Missing `PROJECT.md` → proceed without it and suggest `grimoire-init` at the end (non-blocking — never refuse to answer because it is missing, `§ Documentation`).
 3. Read `.grimoire/config.toml` and `${GRIMOIRE_HOME}/config.toml` per `§ Configuration` (including the one-line `session` notice) — the `research` role's model and effort.
-4. Only when the question concerns Grimoire pages, constructs, or PRs (`§ Backends`, who detects): detect the backend per `§ Backends` and announce it (`🔗 Backend: GitHub (owner/repo)` / `📁 Backend: local`). `[github].mode = "on"` without auth → `❌ GitHub backend required but gh is not authenticated.` and STOP. Otherwise skip detection.
+4. Only when the question concerns Grimoire pages, constructs, or PRs (`§ Backends`, who detects): detect the backend per `§ Backends` and announce it (`🔗 Backend: GitHub (owner/repo)` / `📁 Backend: local`). Missing required GitHub access → stop per `§ Backends`; on agentes.chat a verified connector qualifies without `gh`. Resolve construct storage independently when this skill touches constructs. Otherwise skip detection.
 
 **[Objective]**
 Answer the following question about the repository or the application it builds, faithfully and read-only:
