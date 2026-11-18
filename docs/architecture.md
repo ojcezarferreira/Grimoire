@@ -11,6 +11,7 @@
 
 ```
 skills/grimoire-*/SKILL.md     one directory per skill (13): frontmatter + prompt body
+AGENTES-CHAT.md                managed catalog/connector adapter and native construct protocol
 GRIMOIRE-CONVENTIONS.md        shared rules, organised in "§" sections, read by every skill
 install.sh                     installer (POSIX sh): clone/update, copy skills, deps, config
 install.ps1                    Windows entry point, delegates to install.sh via Git Bash
@@ -31,4 +32,5 @@ CLAUDE.md                      maintainer notes for agents editing this reposito
 
 - **Skills.** Each `SKILL.md` opens with a `[Required Reading]` block naming the sections of `GRIMOIRE-CONVENTIONS.md` it depends on, followed by numbered phases. Skill bodies reference those sections instead of repeating them.
 - **Conventions.** `GRIMOIRE-CONVENTIONS.md` is the single source of truth for every rule shared by more than one skill: the configuration schema, where workflow state is stored (GitHub issues, milestones and pull requests, or git-ignored local files), the automated review procedure, commit rules, pause points, and the differences between Claude Code and Codex.
+- **Managed adapter.** `AGENTES-CHAT.md` maps the workspace catalog and connector operations, and specifies independent native construct storage: a Drive index plus board reference seeds, linked to existing GitHub/local pages. All 13 skills bootstrap this adapter before interpreting CLI examples on agentes.chat.
 - **Installer.** `install.sh` resolves a home directory (default `~/.grimoire`, a git clone marked with `git config grimoire.managed true`), copies `skills/grimoire-*` into `~/.claude/skills/` and `~/.agents/skills/`, replaces the literal token `${GRIMOIRE_HOME}` in every copied `*.md` with the absolute home path, installs the entries of `deps.txt`, and creates `config.toml` in the home from `config.example.toml` when it is absent. Run from a checkout, it uses that checkout as the home (development mode) and clones nothing.

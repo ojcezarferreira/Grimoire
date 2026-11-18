@@ -4,11 +4,13 @@ description: Adopt an existing GitHub issue or milestone into Grimoire — analy
 argument-hint: Issue number (42 / #42) or milestone (milestone 3 / m3 / title)
 ---
 
+**Managed catalog bootstrap (agentes.chat, Grimoire 0.14.1).** Before Required Reading, read `AGENTES-CHAT.md` from the matching distribution, or from `https://raw.githubusercontent.com/ojcezarferreira/Grimoire/v0.14.1/AGENTES-CHAT.md` through the connector/public fetch. Follow its bootstrap when `${GRIMOIRE_HOME}` is unresolved: catalog import does not run the installer. On agentes.chat its transport, permissions, native construct dispatch and managed-update rules refine the CLI examples below. Outside agentes.chat, use the normal installed-home flow.
+
 **[Required Reading]** — in the order of `§ Documentation`:
 1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Backends` (identifiers, the GitHub state model — markers, labels, label-ensure rule, transitions, **Adoption** — and the `gh` cheat sheet), `§ Construct` (storage per backend, reference status, `depends-on` between references, the `grimoire-adopt` clause of the writer contract, and the handoff-brief contract), `§ Sub-agent spawning` (the `research` role), `§ Harness adaptation`, `§ Configuration`, `§ Documentation`, `§ Skill composition`, `§ Commits` (this skill commits **nothing**), `§ IDE-aware review`, `§ User-facing language`, `§ Pause-point pattern`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Parallel execution`, `§ Review loop`, `§ Run` — this skill writes GitHub objects only, never code; `§ .grimoire/ layout` only for the files under `.grimoire/bag/drafts/` (the throwaway draft, the construct handoff brief).
 2. Read `.grimoire/PROJECT.md` (the index), then `docs/conventions.md` and any other linked doc the object touches. Missing `PROJECT.md` → proceed without it and suggest `grimoire-init` at the end (non-blocking, `§ Documentation`).
 3. Read `.grimoire/config.toml` and `${GRIMOIRE_HOME}/config.toml` per `§ Configuration` (including the one-line `session` notice).
-4. Detect the backend per `§ Backends` and announce it (`🔗 Backend: GitHub (owner/repo)` / `📁 Backend: local`). `[github].mode = "on"` without auth → `❌ GitHub backend required but gh is not authenticated.` and STOP.
+4. Detect the backend per `§ Backends` and announce it (`🔗 Backend: GitHub (owner/repo)` / `📁 Backend: local`). Missing required GitHub access → stop per `§ Backends`; on agentes.chat a verified connector qualifies without `gh`. Resolve construct storage independently when this skill touches constructs.
 
 **[Objective]**
 Bring a pre-existing GitHub issue or milestone under Grimoire management: analyze it against the codebase, sharpen it with the developer, and rewrite it — an **issue** becomes a page in `spec` status; a **milestone** becomes a construct whose issues are `grimoire:reference` seeds (`§ Construct`, writer contract).

@@ -4,6 +4,7 @@
 
 - `git`, a POSIX `sh` (Git Bash on Windows), and `bash` for the test suite.
 - Node.js with `npx` / `npm` only to install the third-party dependencies (skip them with `--no-deps`).
+- Python 3.11+ for the offline distribution/prompt contract checks (standard library only).
 
 ## Install from a checkout
 
@@ -21,6 +22,16 @@ bash scripts/test-install.sh
 ```
 
 Runs the installer against throwaway `HOME` directories — no network, the real home is never touched. It covers development mode, `--agent`, token substitution in paths with spaces, remote mode (offline, cloning this checkout's committed `HEAD`), updates, `--uninstall`, and `--purge`. Remote-mode checks see only committed changes.
+
+## Managed-workspace contracts
+
+```sh
+python3 scripts/test-contracts.py
+```
+
+Checks skill frontmatter, release-pinned bootstrap consistency, referenced convention sections, native dispatch in every construct consumer, config defaults and local Markdown links. These are distribution/prompt contract checks; they do not execute an LLM or prove a bot followed the protocol. The [acceptance matrix](agentes-chat-validation.md) describes behavioral checks against actual platform tools before rollout.
+
+Managed skill updates use the catalog tools described in `AGENTES-CHAT.md`; do not refresh CLI skill folders when maintaining a workspace catalog.
 
 ## Lint
 

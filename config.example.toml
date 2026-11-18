@@ -43,6 +43,9 @@ review_timeout_minutes = 30
 max_rounds = 3
 ui_globs = ["src/**/*.{tsx,jsx,vue,svelte,css,scss}", "app/**", "components/**", "pages/**"]
 
+[constructs]
+backend = "auto"                # auto | github | local | agentes-chat (see AGENTES-CHAT.md)
+
 [github]
 mode = "auto"                   # auto | on | off
 label_prefix = "grimoire"

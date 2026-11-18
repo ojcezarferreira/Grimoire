@@ -4,6 +4,8 @@ description: Update the Grimoire installation to its latest version — reads th
 argument-hint: (no arguments)
 ---
 
+**Managed catalog bootstrap (agentes.chat, Grimoire 0.14.1).** Before Required Reading, read `AGENTES-CHAT.md` from the matching distribution, or from `https://raw.githubusercontent.com/ojcezarferreira/Grimoire/v0.14.1/AGENTES-CHAT.md` through the connector/public fetch. Follow its bootstrap when `${GRIMOIRE_HOME}` is unresolved: catalog import does not run the installer. On agentes.chat its transport, permissions, native construct dispatch and managed-update rules refine the CLI examples below. Outside agentes.chat, use the normal installed-home flow.
+
 **[Required Reading]** — in the order of `§ Documentation`:
 1. Read `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md`. Load-bearing for this skill: `§ Harness adaptation` (install location, `${GRIMOIRE_HOME}`, the "fetch a URL" row), `§ IDE-aware review` (the changelog draft), `§ User-facing language`, `§ Pause-point pattern` (`grimoire-update`: changelog review), `§ Skill composition`. **Not applicable:** `§ TDD`, `§ Code comments`, `§ Sub-agent spawning` (this skill spawns nothing), `§ Commits` (this skill commits **nothing**), `§ Backends`, `§ .grimoire/ layout` (pages), `§ Construct`, `§ Parallel execution`, `§ Review loop`, `§ Run`.
 2. `.grimoire/PROJECT.md` and `docs/` are not read — this skill maintains the Grimoire installation, not the project; it is exempt from the `grimoire-init` reminder (`§ Documentation`).
@@ -12,6 +14,9 @@ argument-hint: (no arguments)
 
 **[Objective]**
 Update the Grimoire installation on this machine — the home `${GRIMOIRE_HOME}` and the skill copies of `§ Harness adaptation` — to the latest published version. The skill reads the installed version, compares it to the latest on GitHub, shows what changed, and, once authorized, **runs the Grimoire installer itself**; the installer owns every write to the home and to the skill directories. The flow is the same on Claude Code and Codex. The only file the skill may write in the current project is the ephemeral changelog draft `.grimoire/bag/drafts/grimoire-update-changelog-<epoch>.md` (IDE mode), removed before the skill ends.
+
+**[Managed catalog branch — before Phase 1]**
+On agentes.chat follow `AGENTES-CHAT.md` (Updating bots) instead of the CLI Phases 1–8 below: compare loaded catalog version with the latest published release, show that release's changelog, reuse exact update authorization or its required approval card, update only the 13 Grimoire entries through the catalog, and verify each connected bot. A non-git shared snapshot is not a broken CLI installation. Never run `install.sh` or recommend a CLI reinstall for a managed catalog.
 
 **[Phase 1: Read installed version]**
 - Read `${GRIMOIRE_HOME}/VERSION` (one line, whitespace trimmed).

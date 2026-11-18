@@ -4,7 +4,7 @@ Shared, load-bearing rules for the Grimoire workflow skills (`grimoire-init`, `g
 
 The long-form pipeline is **Spec → Plan → Execute**: `grimoire-spec` gathers context, interviews the user, and writes the page's specification; `grimoire-plan` turns that specification into executable step files when the user wants to steer the plan (otherwise `grimoire-execute` auto-plans); `grimoire-execute` runs the steps inside a page worktree, drives the automated `§ Review loop`, and leaves a pull request waiting for human review. `grimoire-quick` is a separate fast-path that bypasses all three. `grimoire-run` executes a **whole construct**: spec interviews for every pending reference first, then plan → execute → review for every page autonomously, in dependency waves (`§ Run`). `grimoire-adopt` brings **pre-existing GitHub issues and milestones** under Grimoire management. The remaining skills are orthogonal to the pipeline: `grimoire-init` and `grimoire-note` maintain project context (`§ Documentation`), `grimoire-know` answers questions read-only, `grimoire-deps` audits and bumps dependencies, `grimoire-construct` and `grimoire-construct-update` author and alter constructs (`§ Construct`), and `grimoire-update` maintains the Grimoire installation itself.
 
-Workflow state lives in one of two **backends** (`§ Backends`): **GitHub** — pages are issues, constructs are milestones, plans and verdicts are comments, work ships as pull requests — or **local** — the same objects as git-ignored files under `.grimoire/`. Every skill that reads or writes pages, constructs, or PRs detects the backend once — step 4 of its `[Required Reading]` (`§ Documentation`) — and announces it; the exact list is in `§ Backends`. Behaviour is identical across backends and across harnesses (Claude Code and Codex — `§ Harness adaptation`); only the storage and the tool names differ.
+Workflow state lives in one of two **backends** (`§ Backends`): **GitHub** — pages are issues, constructs are milestones, plans and verdicts are comments, work ships as pull requests — or **local** — the same objects as git-ignored files under `.grimoire/`. Every skill that reads or writes pages, constructs, or PRs detects the backend once — step 4 of its `[Required Reading]` (`§ Documentation`) — and announces it; the exact list is in `§ Backends`. Construct storage can additionally be selected independently with `[constructs].backend` (native agentes.chat documents + board references; see [AGENTES-CHAT.md](AGENTES-CHAT.md)). Page storage stays GitHub/local. Behaviour is identical across page backends and across harnesses (Claude Code and Codex — `§ Harness adaptation`); only the storage and the tool names differ.
 
 ---
 
@@ -40,6 +40,8 @@ This rule governs code written during `§ TDD` (the Refactor step is where exces
 ## § Harness adaptation
 
 Grimoire runs on two harnesses: **Claude Code** and **Codex**. This section is the **single source of truth** for everything harness-specific — SKILL.md bodies reference it; they never restate these rules. Every other section of this file is harness-neutral: it names an *operation* (spawn a role, wait, ask the user, invoke a sibling skill) and the table below maps that operation to each harness.
+
+**Managed platform overlay.** On agentes.chat, read [AGENTES-CHAT.md](AGENTES-CHAT.md) before this section. It maps catalog bootstrap, available transports, approvals and native constructs without changing the model harness. Its platform-specific refinements apply wherever a CLI example below differs. Never bypass platform approvals or sandbox restrictions to satisfy a skill.
 
 **Detection.** The harness is detected once per skill run from the tools present in the session: an `Agent` tool means Claude Code; a `spawn_agent` tool means Codex. The result selects the `[agents.claude]` / `[agents.codex]` table of `§ Configuration`.
 
@@ -143,6 +145,9 @@ review_timeout_minutes = 30
 max_rounds = 3
 ui_globs = ["src/**/*.{tsx,jsx,vue,svelte,css,scss}", "app/**", "components/**", "pages/**"]
 
+[constructs]
+backend = "auto"                # auto | github | local | agentes-chat; independent construct storage
+
 [github]
 mode = "auto"                   # auto | on | off
 label_prefix = "grimoire"
@@ -170,6 +175,8 @@ language = "en"                 # grimoire-init asks once (or infers it from the
 **Validation per harness.** Effort accepted on both harnesses: `low`, `medium`, `high`, `xhigh`, `max`. Model on Claude Code: `fable`, `opus`, `sonnet`, `haiku`. Model on Codex: `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-luna` (as of Codex CLI 0.169; a newer id the harness accepts is passed through unchanged). A value the harness rejects at spawn time falls back to the role's built-in default with the same one-line warning.
 
 **The `{port}` placeholder.** `[verify].dev_command` and `[verify].dev_url` MAY contain the literal `{port}`. When present, the `§ Review loop` allocates a free port per page and substitutes it into both strings before starting the dev server, so pages reviewed in parallel never collide. When absent, UI reviews are **serialized** across pages (`§ Run`) and a port already in use means the review proceeds without a browser. `grimoire-init` emits `{port}` whenever the project's dev tool accepts a port flag (Vite `--port`, Next `-p`, …).
+
+**`[constructs]`.** `backend = "auto" | "github" | "local" | "agentes-chat"`; default `auto` follows the page backend, preserving 0.14.0 behavior. Explicit GitHub/local must match the page backend; native agentes.chat may accompany either. Native resolution, tools, stable identifiers, recovery and consumption are specified once in [AGENTES-CHAT.md](AGENTES-CHAT.md). Never migrate an existing construct implicitly. `grimoire-init` proposes this setting and permitted branch prefix with the existing draft; update mode preserves explicit choices.
 
 **`[github]`.** `mode` drives backend detection (`§ Backends`); `label_prefix` and `branch_prefix` are the literal prefixes of the labels (`<label_prefix>:spec`, …) and of the page branches (`<branch_prefix>/<page>-<slug>`). This file spells the defaults — `grimoire:` and `grimoire/` — everywhere; a project that overrides them reads every such literal with its own prefix.
 
@@ -295,16 +302,18 @@ Per-step atomic commits follow `§ Commits`. This section does not restate those
 
 ## § Backends
 
-This section is the **single source of truth** for where Grimoire's workflow state lives — SKILL.md bodies reference it; they never restate these rules. Two backends exist: **GitHub** (issues, milestones, comments, pull requests) and **local** (git-ignored files under `.grimoire/` — `§ .grimoire/ layout`). The invocation syntax, the phases, and the pause-points of every skill are the same on both; only the storage differs.
+This section is the **single source of truth** for where Grimoire's workflow state lives — SKILL.md bodies reference it; they never restate these rules. Two backends exist: **GitHub** (issues, milestones, comments, pull requests) and **local** (git-ignored files under `.grimoire/` — `§ .grimoire/ layout`). The phases and pause-points stay the same; storage and identifiers differ. Constructs may independently use the native agentes.chat adapter (`[constructs].backend`); its `ac:<UUID>` identifiers dispatch before milestone/local resolution in every construct-aware skill.
 
 ### Detection and announcement
 
 - **Who detects.** Detection and announcement are required for the skills that read or write pages, constructs, or PRs — `grimoire-spec`, `grimoire-plan`, `grimoire-execute`, `grimoire-run`, `grimoire-adopt`, `grimoire-construct`, `grimoire-construct-update` — and for `grimoire-init` (labels). `grimoire-know` detects only when the question concerns pages, constructs, or PRs. `grimoire-note`, `grimoire-deps`, `grimoire-quick`, and `grimoire-update` skip detection.
 - Detection runs **once per skill run**, in `[Required Reading]`, after the configuration has been loaded (`§ Documentation`). `[github].mode` is `auto` | `on` | `off`:
-  - `auto` → GitHub **iff** `git remote get-url origin` has host `github.com` (ssh or https) **and** `gh auth status` exits 0; otherwise local.
-  - `on` → GitHub; when `gh auth status` fails → hard-stop `❌ GitHub backend required but gh is not authenticated.`
+  - `auto` → GitHub **iff** `git remote get-url origin` has host `github.com` (ssh or https) **and** an authenticated transport can read that repository; otherwise local. CLI transport checks `gh auth status`; a connector checks repository access with its read tool. A permission/transport error is reported, not treated as proof that existing GitHub state vanished.
+  - `on` → GitHub; without verified repository access → hard-stop `❌ GitHub backend required but repository access is unavailable.` Missing `gh` alone is never this failure when a connector works.
   - `off` → local, even with a GitHub remote.
 - The skill announces the result in one line: `🔗 Backend: GitHub (owner/repo)` or `📁 Backend: local` — glyphs verbatim, prose localized per `§ User-facing language`.
+
+**Transport capability gate.** The `gh` commands below are operation examples. Use equivalent connected tools when supported (`AGENTES-CHAT.md`); verify only capabilities needed for this skill, separately checking milestones. Lack of milestone tools does not disable GitHub pages. Resolve `[constructs].backend` after the page backend, announce both when different, and dispatch native identifiers before every GitHub/local construct branch. Do not change an existing backend silently.
 
 ### Identifiers
 
@@ -403,7 +412,7 @@ Closes #N
 - **Stacking.** When some page in the page's `depends-on` is not yet integrated — GitHub: its PR is **not merged**; local: its branch is **not an ancestor** of the base (`git merge-base --is-ancestor <dep-branch> <base>` fails) — the base becomes the branch of the **last** such dependency in list order (`origin/<dep-branch>` on GitHub), and the remaining non-integrated dependencies are `git merge --no-edit`'d into the new branch at creation time — `origin/<dep-branch>` on GitHub, the local branches locally (a rare, documented case). **v1 performs no rebase**, and the orchestrator never waits for a human merge.
 - **Merge order and issue closing.** `Closes #N` auto-closes the issue only when its PR merges into the **default branch**. A stacked PR merged into its base branch therefore leaves its issue open until that base reaches the default branch, and GitHub re-targets the remaining stacked PRs only when the merged head branch is deleted. The merge-order line of `## Human validation` states the order and says both.
 
-**`gh` cheat sheet** — the commands the skills use:
+**`gh` cheat sheet** — CLI examples of backend operations (connected equivalents follow the same contracts):
 
 - Repository: `gh repo view --json nameWithOwner,defaultBranchRef`
 - Milestones (no native `gh milestone`): create `gh api repos/{owner}/{repo}/milestones -f title=… -F description=@desc.md` · read `gh api repos/{owner}/{repo}/milestones/<n>` · update `gh api -X PATCH … -F description=@desc.md` · list `gh api 'repos/{owner}/{repo}/milestones?state=all'`
@@ -555,6 +564,8 @@ Sub-agents receive the same pointers in their prompt (which docs to read for the
 This section is the **single source of truth** for constructs — SKILL.md bodies reference it; they never restate these rules.
 
 **Definition.** A **construct** is a larger-than-a-page objective decomposed into an *ordered, flat list of reference-seeds*. Each reference is later expanded — through the normal full `grimoire-spec` interview — into one real **page**; `grimoire-run` does that for every pending reference in sequence and then executes the pages (`§ Run`). The construct is the roadmap-of-record; the pages it spawns are the actual work. Constructs are **flat and self-contained**: no nested constructs, no sub-references, no construct-of-constructs. A construct is never a page and never produces a commit of its own.
+
+**Independent native storage.** When `[constructs].backend = "agentes-chat"`, [AGENTES-CHAT.md](AGENTES-CHAT.md) supplies the storage, writer contract refinements, `ac:<UUID>` resolution, creation/recovery, alteration, consumption and run dispatch. Apply that branch **before** the GitHub/local alternatives below. In particular, native consumption creates a new GitHub/local page and typed backlink; it never rewrites a native board seed into a GitHub issue or attaches a milestone. All other construct invariants below still apply.
 
 **Storage per backend.**
 
@@ -714,7 +725,7 @@ This section is the **single source of truth** for `grimoire-run <construct>` �
 - **Blocked propagation.** Every `blocked` outcome — rounds exhausted, step failure, watchdog — marks the page's transitive dependents `skipped`; independent pages continue.
 - **UI reviews** are serialized across pages when `[verify]` has no `{port}` placeholder — a mutex held in the ledger frontmatter `ui_review`: while another page's UI review runs, the orchestrator holds back a reviewer whose diff matches `[review].ui_globs` until the field is back to `none`.
 
-**Ledger** — `.grimoire/bag/runs/<construct>-<epoch>.md`, rewritten at every transition. `<construct>` is the milestone number on GitHub and the zero-padded `NNN` locally; `<epoch>` is Unix seconds at creation; the file stem `<construct>-<epoch>` is the **run id**.
+**Ledger** — `.grimoire/bag/runs/<construct>-<epoch>.md`, rewritten at every transition. `<construct>` is the milestone number on GitHub, the zero-padded `NNN` locally, or `ac-<UUID>` for native constructs (the adapter also records the full `ac:` identity and page backend); `<epoch>` is Unix seconds at creation; the file stem `<construct>-<epoch>` is the **run id**.
 - frontmatter: `construct`, `backend`, `started`, the model / effort snapshot per role, `max_rounds`, `ui_review: <page | none>`;
 - a table `page | wave | phase | branch | base | pr | updated | note`, with `phase ∈ pending | planning | executing k/n | reviewing r/R | review | blocked | skipped | done`.
 - It lists **every page of the construct**: a page already in `review` enters as `review`, a closed (merged) page as `done`, a page already `blocked` as `blocked` with the note `blocked before the run` (its transitive dependents `skipped`); runnable pages enter as `pending`.
@@ -790,7 +801,7 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
 **General rules.**
 - A **hard-stop** prints its literal `❌` message, changes nothing, never offers to run the other skill automatically, and never silently fixes the state.
 - `N` in a message is the identifier the user typed, rendered as the backend's identifier: the issue / milestone number on GitHub (`#42`), the zero-padded `NNN` locally (`§ Backends`). `#M` / `#X` are likewise issue / PR numbers.
-- **Backend hard-stop (every skill that detects the backend — `§ Backends`):** `[github].mode = "on"` and `gh auth status` fails → `❌ GitHub backend required but gh is not authenticated.` The backend announcement itself (`🔗` / `📁`) is not a pause. Configuration never hard-stops (`§ Configuration`).
+- **Backend hard-stop (every skill that detects the backend — `§ Backends`):** `[github].mode = "on"` without verified repository access through CLI or connector → `❌ GitHub backend required but repository access is unavailable.` The backend announcement itself (`🔗` / `📁`) is not a pause. Configuration never hard-stops (`§ Configuration`).
 - The write / scope gate of `§ Skill composition` folds into the nearest existing pause below — it never adds a pause of its own.
 - **After a draft PR exists for a page, nothing more is asked about that page within that execution** — `grimoire-execute` and `grimoire-run` finish it with `review` or `blocked` (`§ Review loop`).
 
@@ -857,6 +868,7 @@ Grimoire skills must pause and wait for the user at well-defined checkpoints. Ne
 **`grimoire-know`** — no pause-points: read-only, answers directly (uncertainties are stated in the answer, not asked back).
 
 **`grimoire-update`**
+- **Managed catalog:** use the catalog update branch of `AGENTES-CHAT.md` before any CLI reinstall or install-kind checks. Existing authorization for that exact update is reused; required action/proposal cards remain binding.
 - **Changelog review:** when the installed `VERSION` differs from the latest, present the changelog delta per `§ IDE-aware review` and PAUSE for an explicit ok before running the installer. No pause when the versions match (print the up-to-date line and stop).
 
 **`grimoire-note`**

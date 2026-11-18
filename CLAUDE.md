@@ -11,7 +11,7 @@ Grimoire is a set of **thirteen skills** for Claude Code and Codex that define t
 - **Skills.** One `skills/<name>/SKILL.md` per skill: YAML frontmatter (`name`, `description`, `argument-hint`) and a prompt body that opens with a `[Required Reading]` block and continues in numbered phases.
 - **Single source of truth.** Every shared, load-bearing rule lives in [GRIMOIRE-CONVENTIONS.md](GRIMOIRE-CONVENTIONS.md), organised in `§` sections. Skill bodies reference it as `${GRIMOIRE_HOME}/GRIMOIRE-CONVENTIONS.md` and name the sections they depend on; they never restate a rule.
 - **Installer.** `install.sh` (POSIX sh: clone/update the home, copy the skills, substitute `${GRIMOIRE_HOME}`, install `deps.txt`, create the global config), `install.ps1` (Windows wrapper running `install.sh` through Git Bash), `deps.txt`, `config.example.toml`, `VERSION`, and the VERSION-driven `.github/workflows/release.yml`. There is no plugin manifest.
-- **No build, no source code.** The only test suite is `bash scripts/test-install.sh` (sandboxed `HOME`, offline); the lint is `sh -n install.sh`. Edits land in the markdown of the files above.
+- **No build, no application code.** Distribution/prompt contracts are checked by `python3 scripts/test-contracts.py`; the installer suite is `bash scripts/test-install.sh` (sandboxed `HOME`, offline); the lint is `sh -n install.sh`. Edits land in the markdown of the files above.
 - **Neutral docs** for humans live in [docs/](docs/); this repository's own Grimoire index is [.grimoire/PROJECT.md](.grimoire/PROJECT.md).
 
 ## Vocabulary
@@ -42,6 +42,8 @@ Grimoire is a set of **thirteen skills** for Claude Code and Codex that define t
 - **`grimoire-update`** — Maintains the installation: reads `${GRIMOIRE_HOME}/VERSION`, fetches `main/VERSION` and `CHANGELOG.md`, shows the delta, and on an explicit yes runs `sh "${GRIMOIRE_HOME}/install.sh" --ref v<latest>` (managed clone only; a dev checkout gets `git pull` + `./install.sh` advice, a non-git home the reinstall one-liner). Same flow on both harnesses. Spawns nothing, commits nothing, reads no project context.
 
 ## Shared conventions
+
+The managed-platform overlay lives in `AGENTES-CHAT.md`, loaded by all skill bootstraps before shared rules; it owns native construct storage and catalog/connector adaptation.
 
 Every `§` section of [GRIMOIRE-CONVENTIONS.md](GRIMOIRE-CONVENTIONS.md), in file order:
 
@@ -76,4 +78,5 @@ Every `§` section of [GRIMOIRE-CONVENTIONS.md](GRIMOIRE-CONVENTIONS.md), in fil
 - **Installer changes** — keep `install.sh` POSIX sh (no `sed -i`, quote every path) and run `bash scripts/test-install.sh` before committing.
 - **`.superpowers/`** is git-ignored scratch — never commit it.
 - **This repo's own `.grimoire/`** holds only `PROJECT.md` and `config.toml` (committed); everything else under it is git-ignored, as in any consuming project.
+- **Managed catalogs:** follow `AGENTES-CHAT.md`; do not run the CLI installer or write CLI skill folders to update workspace skills. The following refresh applies only to standalone CLI development.
 - **After editing skills or conventions**, run `./install.sh` from the checkout (dev mode) to refresh the installed copies under `~/.claude/skills/` and `~/.agents/skills/` — the agents read the copies, not the checkout.

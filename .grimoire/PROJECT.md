@@ -6,6 +6,8 @@
 - docs/conventions.md — content, skill-file, shell and commit rules for this repository.
 - docs/development.md — install from a checkout, installer tests, lint, and the release process.
 
+- docs/agentes-chat-validation.md — compatibility and native-construct acceptance matrix.
+
 ## Grimoire rules
 - `GRIMOIRE-CONVENTIONS.md` is the single source of truth; skill bodies reference its `§` sections and never restate rules.
 - Run `bash scripts/test-install.sh` before committing installer changes (`install.sh`, `install.ps1`, `deps.txt`, `config.example.toml`).
